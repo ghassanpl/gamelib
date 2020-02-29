@@ -29,14 +29,14 @@ namespace gamelib
 
 	vec2 ICamera::CameraSpaceToWorldSpace(vec2 camera_point) const
 	{
-		auto world_point = camera_point * mWorldSize + vec2(mViewport.position());
+		auto world_point = camera_point * mWorldRect.size() + vec2(mViewport.position());
 		al_transform_coordinates(&GetInverseTransform(), &world_point.x, &world_point.y);
 		return world_point;
 	}
 
 	vec2 ICamera::WorldSpaceToCameraSpace(vec2 world_point) const
 	{
-		auto camera_point = (world_point) / mWorldSize;
+		auto camera_point = (world_point) / mWorldRect.size();
 		al_transform_coordinates(&GetTransform(), &camera_point.x, &camera_point.y);
 		return camera_point - vec2(mViewport.position());
 	}
@@ -71,21 +71,20 @@ namespace gamelib
 
 	void ICamera::SetWorldBounds(rec2 const& rect, float rotation)
 	{
-		mWorldPosition = rect.position();
-		mWorldSize = rect.size();
+		mWorldRect = rect;
 		UpdatePositions();
 		mTransformable.SetRotation(rotation);
 	}
 
 	void ICamera::SetWorldSize(vec2 size)
 	{
-		mWorldSize = size;
+		mWorldRect.set_size(size);
 		UpdatePositions();
 	}
 
 	void ICamera::SetWorldCenter(vec2 pos)
 	{
-		mWorldPosition = pos - mWorldSize / 2.0f;
+		mWorldRect.set_center(pos);
 		UpdatePositions();
 	}
 
@@ -96,9 +95,12 @@ namespace gamelib
 
 	void ICamera::UpdatePositions()
 	{
-		mTransformable.SetOrigin(mWorldPosition + mWorldSize / 2.0f);
-		mTransformable.SetPosition(-mWorldPosition + vec2(mViewport.position()));
-		mTransformable.SetScale(vec2{ mViewport.size() } / mWorldSize);
+		auto factor = float(mZoom / mWorldRect.size().x);
+		auto resize = -mWorldRect.size() * factor;
+		auto world_rect = mWorldRect.grown(resize);
+		mTransformable.SetOrigin(world_rect.center());
+		mTransformable.SetPosition(-world_rect.position() + vec2(mViewport.position()));
+		mTransformable.SetScale(vec2{ mViewport.size() } / world_rect.size());
 	}
 
 	bool ICamera::InViewport(ivec2 pos) const
@@ -124,22 +126,25 @@ namespace gamelib
 
 	void ICamera::Pan(world_pos_t by)
 	{
-		SetPosition(GetPosition() + by.Value);
+		mWorldRect.set_position(mWorldRect.position() - by.Value);
+		UpdatePositions();
 	}
 
 	void ICamera::Pan(screen_pos_t by)
 	{
-		Pan(world_pos_t{ ToCameraSpace(by).Value * mWorldSize });
+		/// Inefficient but meh
+		vec2 zero = mViewport.position();
+		auto world_point = (by.Value / vec2{ mViewport.size() }) * mWorldRect.size();
+		al_transform_coordinates(&GetInverseTransform(), &zero.x, &zero.y);
+		al_transform_coordinates(&GetInverseTransform(), &world_point.x, &world_point.y);
+		Pan(world_pos_t{ world_point - zero });
 	}
 
 	void ICamera::ScreenZoom(vec2 screen_anchor, double zoom_by)
 	{
-		auto factor = float(zoom_by / mWorldSize.x);
 		//mWorldPosition += (GetWorldCenter() - ScreenSpaceToWorldSpace(screen_anchor)) * factor;
-		auto resize = mWorldSize * factor;
-		mWorldPosition -= resize / 2.0f;
-		mWorldSize += resize;
+		mZoom += zoom_by;
 		UpdatePositions();
-		fmt::print("World Size: {}\n", GetWorldBounds());
+		//fmt::print("World Size: {}\n", GetWorldBounds());
 	}
 }

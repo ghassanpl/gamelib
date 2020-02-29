@@ -124,6 +124,11 @@ namespace gamelib
 		return {};
 	}
 
+	vec2 IInputSystem::GetMousePosition()
+	{
+		return { (float)GetMouse()->GetInputState(GetMouse()->GetXAxisInput()), (float)GetMouse()->GetInputState(GetMouse()->GetYAxisInput()) };
+	}
+
 	IInputDevice* IInputSystem::GetInputDevice(InputDeviceIndex id)
 	{
 		if (id < mInputDevices.size())

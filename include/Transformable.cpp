@@ -29,7 +29,7 @@ namespace gamelib
 			al_translate_transform(&mTransform, -mOrigin.x, -mOrigin.y);
 			al_scale_transform(&mTransform, mScale.x, mScale.y);
 			al_rotate_transform(&mTransform, mRotation);
-			al_translate_transform(&mTransform, mOrigin.x + mPosition.x, mOrigin.y + mPosition.y);
+			al_translate_transform(&mTransform, (mOrigin.x + mPosition.x) * mScale.x, (mOrigin.y + mPosition.y) * mScale.y);
 			mTransformUpdated = true;
 			mInverseTransformUpdated = false;
 		}

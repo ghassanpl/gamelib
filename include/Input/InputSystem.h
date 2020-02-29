@@ -85,6 +85,8 @@ namespace gamelib
 		float GetAxis(Input of_input);
 		vec2 GetAxis2D(Input of_input);
 
+		virtual vec2 GetMousePosition();
+
 		/// TODO: Input Command callbacks (Down, Up, Press, Hold, etc)
 
 		IInputDevice* GetLastDeviceActive() const { return mLastActiveDevice; }

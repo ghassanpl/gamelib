@@ -218,7 +218,7 @@ namespace gamelib
 
 	void AllegroMouse::MouseWheelScrolled(float delta, unsigned wheel)
 	{
-		CurrentState[Wheel0 + wheel] = delta;
+		CurrentState[Wheel0 + wheel] += delta;
 	}
 
 	void AllegroMouse::MouseButtonPressed(MouseButton button)

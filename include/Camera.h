@@ -67,7 +67,7 @@ namespace gamelib
 
 		void SetWorldSize(vec2 size);
 		void SetWorldCenter(vec2 pos);
-		vec2 GetWorldCenter() const { return mWorldPosition - mWorldSize / 2.0f; }
+		vec2 GetWorldCenter() const { return mWorldRect.center(); }
 
 		bool InViewport(ivec2 pos) const;
 		bool InViewport(screen_pos_t pos) const;
@@ -79,8 +79,6 @@ namespace gamelib
 		auto GetTransform() const -> ALLEGRO_TRANSFORM const& { return mTransformable.GetTransform(); }
 		auto GetInverseTransform() const -> ALLEGRO_TRANSFORM const& { return mTransformable.GetInverseTransform(); }
 
-		auto GetPosition() const->vec2 { return mTransformable.GetPosition(); }
-		auto SetPosition(vec2 pos) -> void { mTransformable.SetPosition(pos); }
 		auto GetRotation() const -> double { return mTransformable.GetRotation(); }
 		auto SetRotation(double rot) -> void { mTransformable.SetRotation(rot); }
 
@@ -94,11 +92,12 @@ namespace gamelib
 
 		void UpdatePositions();
 
-		vec2 mWorldPosition = {};
-		vec2 mWorldSize = {};
+		rec2 mWorldRect;
 		Transformable mTransformable;
 
 		irec2 mViewport;
+
+		double mZoom = 0;
 	};
 
 }
