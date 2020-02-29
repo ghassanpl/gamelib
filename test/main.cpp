@@ -1,8 +1,28 @@
 #include <allegro5/allegro.h>
+#include <allegro5/allegro_primitives.h>
+
+#include <Common.h>
+#include <Includes/Allegro.h>
+#include <Includes/EnumFlags.h>
+#include <Includes/Format.h>
+#include <Includes/GLM.h>
+#include <Includes/JSON.h>
+#include <Includes/MagicEnum.h>
+#include <Align.h>
+#include <Animations.h>
+#include <Camera.h>
+#include <Colors.h>
+#include <Input/AllegroInput.h>
+#include <Utils/PanZoomer.h>
+
+using namespace gamelib;
 
 int main()
 {
+	auto q = Interpolate(InterpolationFunction::Cosine, double{});
 	al_init();
+	al_init_primitives_addon();
+
 	al_install_keyboard();
 	al_install_mouse();
 
@@ -22,31 +42,51 @@ int main()
 	AL_FUNC(void, al_set_app_name, (const char *app_name));
 	*/
 
+	IErrorReporter reporter;
+
+	ICamera camera{display};
+
+	AllegroInput input{ reporter };
+	input.Init();
+	PanZoomer pz{ input, camera };
+
 	bool quit = false;
 	while (!quit)
 	{
+		input.Update();
+
 		ALLEGRO_EVENT event{};
 		while (al_get_next_event(queue, &event))
 		{
 			switch (event.type)
 			{
-				/// case ALLEGRO_EVENT_KEY_DOWN:
-				/// case ALLEGRO_EVENT_KEY_CHAR:
-				/// case ALLEGRO_EVENT_KEY_UP:
-				/// case ALLEGRO_EVENT_MOUSE_AXES:
-				/// case ALLEGRO_EVENT_MOUSE_BUTTON_DOWN:
-				/// case ALLEGRO_EVENT_MOUSE_BUTTON_UP:
 				/// ALLEGRO_EVENT_MOUSE_ENTER_DISPLAY, ALLEGRO_EVENT_MOUSE_LEAVE_DISPLAY
 			case ALLEGRO_EVENT_DISPLAY_CLOSE:
 				quit = true;
 				break;
 			}
+
+			input.ProcessEvent(event);
 		}
 
 		double t = al_get_time();
+		double dt = 1. / 60.;
 
-		/// al_get_mouse_state
-		/// al_clear_to_color ?
+		/// //////////////////////////// ///
+		/// TODO: Update
+		/// //////////////////////////// ///
+
+		pz.Update(dt);
+
+		/// //////////////////////////// ///
+		/// Draw
+		/// //////////////////////////// ///
+
+		al_clear_to_color(ToAllegro(Colors::Black));
+
+		al_use_transform(&camera.GetTransform());
+
+		al_draw_circle(0, 0, 100, ToAllegro(Colors::Red), 0.0f);
 		/// al_hold_bitmap_drawing
 		/// al_draw_tinted_scaled_rotated_bitmap_region
 

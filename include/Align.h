@@ -7,49 +7,73 @@ namespace gamelib
 	/// Align
 	///************************************************************************/
 
-	enum class Align
+	enum class HorizontalAlign
 	{
 		Left = 0,
 		Center = 1,
 		Right = 2,
 
-		HorizontalMask = Left | Center | Right,
+		Mask = Left | Center | Right
+	};
 
+	enum class VerticalAlign
+	{
 		Top = 0,
 		Middle = 4,
 		Bottom = 8,
 
-		VerticalMask = Top | Middle | Bottom,
-
-		LeftTop = Left | Top,
-		CenterTop = Center | Top,
-		RightTop = Right | Top,
-
-		LeftMiddle = Left | Middle,
-		CenterMiddle = Center | Middle,
-		RightMiddle = Right | Middle,
-
-		LeftBottom = Left | Bottom,
-		CenterBottom = Center | Bottom,
-		RightBottom = Right | Bottom,
+		Mask = Top | Middle | Bottom
 	};
 
-	constexpr inline Align operator|(Align first, Align second) { return Align(int(first) | int(second)); }
+	enum class Align;
 
-	constexpr inline Align GetHorizontal(Align align) { return Align{ int(align) & int(Align::HorizontalMask) }; }
-	constexpr inline Align GetVertical(Align align) { return Align{ int(align) & int(Align::VerticalMask) }; }
-	constexpr inline Align HorizontalToVertical(Align align) { return Align{ (int(align) & int(Align::HorizontalMask)) >> 2 }; }
-	constexpr inline Align VerticalToHorizontal(Align align) { return Align{ (int(align) & int(Align::VerticalMask)) << 2 }; }
+	constexpr inline Align operator|(HorizontalAlign first, VerticalAlign second) { return Align(int(first) | int(second)); }
+	constexpr inline Align operator|(VerticalAlign first, HorizontalAlign second) { return Align(int(first) | int(second)); }
+
+	enum class Align
+	{
+		LeftTop = HorizontalAlign::Left | VerticalAlign::Top,
+		CenterTop = HorizontalAlign::Center | VerticalAlign::Top,
+		RightTop = HorizontalAlign::Right | VerticalAlign::Top,
+
+		LeftMiddle = HorizontalAlign::Left | VerticalAlign::Middle,
+		CenterMiddle = HorizontalAlign::Center | VerticalAlign::Middle,
+		RightMiddle = HorizontalAlign::Right | VerticalAlign::Middle,
+
+		LeftBottom = HorizontalAlign::Left | VerticalAlign::Bottom,
+		CenterBottom = HorizontalAlign::Center | VerticalAlign::Bottom,
+		RightBottom = HorizontalAlign::Right | VerticalAlign::Bottom,
+	};
+
+	constexpr inline VerticalAlign ToVertical(HorizontalAlign align) { return VerticalAlign{ (int(align) & int(HorizontalAlign::Mask)) >> 2 }; }
+	constexpr inline VerticalAlign ToVertical(VerticalAlign align) { return align; }
+	constexpr inline HorizontalAlign ToHorizontal(VerticalAlign align) { return HorizontalAlign{ (int(align) & int(VerticalAlign::Mask)) << 2 }; }
+	constexpr inline HorizontalAlign ToHorizontal(HorizontalAlign align) { return align; }
+	constexpr inline VerticalAlign Vertical(Align align) { return VerticalAlign{ (int(align) & int(VerticalAlign::Mask)) }; }
+	constexpr inline HorizontalAlign Horizontal(Align align) { return HorizontalAlign{ (int(align) & int(HorizontalAlign::Mask)) }; }
 
 	template <typename T>
-	inline constexpr T AlignAxis(const T& width, const T& max_width, Align horizontal_align) {
-		switch (GetHorizontal(horizontal_align))
+	inline constexpr T AlignAxis(const T& width, const T& max_width, HorizontalAlign align) {
+		switch (align)
 		{
-		case Align::Center: return (max_width / 2 - width / 2);
-		case Align::Right: return (max_width - width);
+		case HorizontalAlign::Center: return (max_width / 2 - width / 2);
+		case HorizontalAlign::Right: return (max_width - width);
 		default:
-		case Align::Left: return 0;
+		case HorizontalAlign::Left: return 0;
 		}
 	}
 
+	template <typename T>
+	inline constexpr T AlignAxis(const T& width, const T& max_width, VerticalAlign align) {
+		switch (align)
+		{
+		case VerticalAlign::Middle: return (max_width / 2 - width / 2);
+		case VerticalAlign::Bottom: return (max_width - width);
+		default:
+		case VerticalAlign::Top: return 0;
+		}
+	}
+
+	#define GAMELIB_ALIGN
+	#include "Combos/Align+GLM.h"
 }
