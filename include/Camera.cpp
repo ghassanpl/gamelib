@@ -7,11 +7,11 @@ namespace gamelib
 	ICamera::ICamera(ALLEGRO_DISPLAY* display) noexcept
 	{
 		auto size = irec2::from_size(0, 0, al_get_display_width(display), al_get_display_height(display));
-		SetWorldBounds(size, 0);
+		SetWorldBounds(size, radians_t{0.0f});
 		SetViewport(size);
 	}
 
-	ICamera::ICamera(screen_bounds_t const& sbounds, world_bounds_t const& wbounds, double rotation) noexcept
+	ICamera::ICamera(screen_bounds_t const& sbounds, world_bounds_t const& wbounds, radians_t rotation) noexcept
 	{
 		SetWorldBounds(wbounds.get(), rotation);
 		SetViewport(sbounds.get());
@@ -24,26 +24,24 @@ namespace gamelib
 
 	vec2 ICamera::ScreenSpaceToWorldSpace(vec2 screen_point) const
 	{
-		return CameraSpaceToWorldSpace(ScreenSpaceToCameraSpace(screen_point));
+		al_transform_coordinates(&GetInverseTransform(), &screen_point.x, &screen_point.y);
+		return screen_point;
 	}
 
 	vec2 ICamera::CameraSpaceToWorldSpace(vec2 camera_point) const
 	{
-		auto world_point = camera_point * mWorldRect.size() + vec2(mViewport.position());
-		al_transform_coordinates(&GetInverseTransform(), &world_point.x, &world_point.y);
-		return world_point;
+		return CameraSpaceToScreenSpace(ScreenSpaceToWorldSpace(camera_point));
 	}
 
 	vec2 ICamera::WorldSpaceToCameraSpace(vec2 world_point) const
 	{
-		auto camera_point = (world_point) / mWorldRect.size();
-		al_transform_coordinates(&GetTransform(), &camera_point.x, &camera_point.y);
-		return camera_point - vec2(mViewport.position());
+		return ScreenSpaceToCameraSpace(WorldSpaceToScreenSpace(world_point));
 	}
 
 	vec2 ICamera::WorldSpaceToScreenSpace(vec2 world_point) const
 	{
-		return CameraSpaceToScreenSpace(WorldSpaceToCameraSpace(world_point));
+		al_transform_coordinates(&GetTransform(), &world_point.x, &world_point.y);
+		return world_point;
 	}
 
 	vec2 ICamera::CameraSpaceToScreenSpace(vec2 camera_point) const
@@ -55,7 +53,7 @@ namespace gamelib
 	{
 		auto p1 = CameraSpaceToWorldSpace({ 0, 0 });
 		auto p4 = CameraSpaceToWorldSpace({ 1, 1 });
-		if (GetRotation() == 0)
+		if (GetRotation().Value == 0)
 			return rec2{ p1.x, p1.y, p4.x, p4.y };
 
 		auto p2 = CameraSpaceToWorldSpace({ 0, 1 });
@@ -69,7 +67,7 @@ namespace gamelib
 		return rec2{ l, t, r, b };
 	}
 
-	void ICamera::SetWorldBounds(rec2 const& rect, float rotation)
+	void ICamera::SetWorldBounds(rec2 const& rect, radians_t rotation)
 	{
 		mWorldRect = rect;
 		UpdatePositions();
@@ -95,12 +93,9 @@ namespace gamelib
 
 	void ICamera::UpdatePositions()
 	{
-		auto factor = float(mZoom / mWorldRect.size().x);
-		auto resize = -mWorldRect.size() * factor;
-		auto world_rect = mWorldRect.grown(resize);
-		mTransformable.SetOrigin(world_rect.center());
-		mTransformable.SetPosition(-world_rect.position() + vec2(mViewport.position()));
-		mTransformable.SetScale(vec2{ mViewport.size() } / world_rect.size());
+		mTransformable.SetOrigin(mWorldRect.center());
+		mTransformable.SetPosition(-mWorldRect.position() + vec2(mViewport.position()));
+		mTransformable.SetScale(vec2{ mViewport.size() } / mWorldRect.size());
 	}
 
 	bool ICamera::InViewport(ivec2 pos) const
@@ -132,19 +127,25 @@ namespace gamelib
 
 	void ICamera::Pan(screen_pos_t by)
 	{
-		/// Inefficient but meh
-		vec2 zero = mViewport.position();
-		auto world_point = (by.Value / vec2{ mViewport.size() }) * mWorldRect.size();
-		al_transform_coordinates(&GetInverseTransform(), &zero.x, &zero.y);
-		al_transform_coordinates(&GetInverseTransform(), &world_point.x, &world_point.y);
-		Pan(world_pos_t{ world_point - zero });
+		auto zero = ScreenSpaceToWorldSpace({});
+		auto offs = ScreenSpaceToWorldSpace(by.Value);
+		Pan(world_pos_t{ offs - zero });
 	}
 
 	void ICamera::ScreenZoom(vec2 screen_anchor, double zoom_by)
 	{
-		//mWorldPosition += (GetWorldCenter() - ScreenSpaceToWorldSpace(screen_anchor)) * factor;
-		mZoom += zoom_by;
+		/// Inefficient but meh
+		auto world_anchor = ScreenSpaceToWorldSpace(screen_anchor);
+
+		auto aspect = mWorldRect.size();
+		aspect /= aspect.x;
+		mWorldRect.grow(float(zoom_by) * aspect);
+
+		/// FUCK IT FFFFFFFFUUUUUUUUUUUUUUUUUCK
+		mWorldRect.set_size(glm::max(mWorldRect.size(), vec2{ mViewport.size() }));
+
 		UpdatePositions();
-		//fmt::print("World Size: {}\n", GetWorldBounds());
+		auto new_world_anchor = ScreenSpaceToWorldSpace(screen_anchor);
+		SetWorldCenter(GetWorldCenter() + (world_anchor - new_world_anchor));
 	}
 }

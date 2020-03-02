@@ -12,8 +12,14 @@
 #include <Animations.h>
 #include <Camera.h>
 #include <Colors.h>
+#include <Debugger.h>
+#include <ErrorReporter.h>
+#include <Navigation/Grid.h>
+#include <Navigation/Navigation.h>
+#include <Navigation/Maze.h>
 #include <Input/AllegroInput.h>
 #include <Utils/PanZoomer.h>
+//#include <Resources/Map.h>
 
 using namespace gamelib;
 
@@ -45,6 +51,7 @@ int main()
 	IErrorReporter reporter;
 
 	ICamera camera{display};
+	//camera.SetRotation(45.0);
 
 	AllegroInput input{ reporter };
 	input.Init();
@@ -87,6 +94,9 @@ int main()
 		al_use_transform(&camera.GetTransform());
 
 		al_draw_circle(0, 0, 100, ToAllegro(Colors::Red), 0.0f);
+		al_draw_circle(1280, 720, 100, ToAllegro(Colors::Red), 0.0f);
+		auto mouse = camera.ScreenSpaceToWorldSpace(input.GetMousePosition());
+		al_draw_filled_circle(mouse.x, mouse.y, 3, ToAllegro(Colors::White));
 		/// al_hold_bitmap_drawing
 		/// al_draw_tinted_scaled_rotated_bitmap_region
 

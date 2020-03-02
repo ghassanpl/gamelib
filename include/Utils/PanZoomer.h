@@ -14,15 +14,15 @@ namespace gamelib
 		InputID PositionInput = InvalidInput;
 
 		float MinThrowSpeed = 0;
-		double ZoomSpeed = 200;
+		double ZoomSpeed = 100;
 
-		PanZoomer(IInputSystem& input, ICamera& camera, int grab_input, int zoom_input, int position, double zoom_speed = 200)
-			: Input(input), Camera(camera), GrabInput(grab_input), ZoomInput(zoom_input), PositionInput(position), ZoomSpeed(zoom_speed)
+		PanZoomer(IInputSystem& input, ICamera& camera, int grab_input, int zoom_input, int position)
+			: Input(input), Camera(camera), GrabInput(grab_input), ZoomInput(zoom_input), PositionInput(position)
 		{
 
 		}
-		PanZoomer(IInputSystem& input, ICamera& camera, double zoom_speed = 200)
-			: Input(input), Camera(camera), ZoomSpeed(zoom_speed)
+		PanZoomer(IInputSystem& input, ICamera& camera)
+			: Input(input), Camera(camera)
 		{
 
 		}
@@ -70,7 +70,7 @@ namespace gamelib
 			{
 				auto zoom = GetZoomInput();
 				if (zoom != 0)
-					Camera.ScreenZoom(pos.Value, zoom * ZoomSpeed);
+					Camera.ScreenZoom(pos.Value, -zoom * ZoomSpeed);
 			}
 		}
 

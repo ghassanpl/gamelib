@@ -33,3 +33,16 @@ template <typename T, typename Parameter>
 inline std::ostream& operator<<(std::ostream& strm, named<T, Parameter> const& val) { return strm << val.Value; }
 
 using bool_t = named<bool, struct NamedBool>;
+
+using degrees_t = named<float, struct Degrees>;
+using radians_t = named<float, struct Radians>;
+
+namespace std
+{
+	namespace filesystem
+	{
+		class path;
+	}
+}
+
+using std::filesystem::path;

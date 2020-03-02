@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Common.h"
 #include "Includes/Allegro.h"
 
 namespace gamelib
@@ -14,8 +15,8 @@ namespace gamelib
 		auto SetOrigin(vec2 pos) -> void { mOrigin = pos; mTransformUpdated = false; }
 		auto GetScale() const -> vec2 { return mScale; }
 		auto SetScale(vec2 pos) -> void { mScale = pos; mTransformUpdated = false; }
-		auto GetRotation() const -> float { return mRotation; }
-		auto SetRotation(float rot) -> void { mRotation = rot; mTransformUpdated = false; }
+		auto GetRotation() const -> radians_t { return mRotation; }
+		auto SetRotation(radians_t rot) -> void { mRotation = rot; mTransformUpdated = false; }
 
 		auto GetTransform() const->ALLEGRO_TRANSFORM const&;
 		auto GetInverseTransform() const->ALLEGRO_TRANSFORM const&;
@@ -26,7 +27,7 @@ namespace gamelib
 
 		vec2 mPosition = {};
 		vec2 mOrigin = {};
-		float mRotation = 0;
+		radians_t mRotation = radians_t{ 0.0f };
 		vec2 mScale = { 1, 1 };
 		mutable ALLEGRO_TRANSFORM mTransform = {};
 		mutable ALLEGRO_TRANSFORM mInverseTransform = {};

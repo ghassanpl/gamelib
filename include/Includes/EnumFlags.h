@@ -14,4 +14,6 @@ namespace ghassanpl
 }
 
 #define GAMELIB_ENUM_FLAGS
+#ifdef GAMELIB_JSON
 #include "../Combos/EnumFlags+JSON.h"
+#endif

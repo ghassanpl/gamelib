@@ -47,4 +47,6 @@ namespace fmt {
 #include <fmt/chrono.h>
 
 #define GAMELIB_FORMAT
+#ifdef GAMELIB_GLM
 #include "../Combos/Format+GLM.h"
+#endif

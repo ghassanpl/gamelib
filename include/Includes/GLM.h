@@ -74,9 +74,9 @@ namespace glm
 		tvec left_bottom() const noexcept { return { p1.x, p2.y }; }
 		tvec right_top() const noexcept { return { p2.x, p1.y }; }
 		tvec right_bottom() const noexcept { return p2; }
-		tvec half_width() const noexcept { return (p2 - p1) / T{ 2 }; }
-		tvec center() const noexcept { return p1 + half_width(); }
-		trec2& set_center(tvec pos) noexcept { const auto hw = half_width(); p1 = pos - hw; p2 = pos + hw; return *this; }
+		tvec half_size() const noexcept { return (p2 - p1) / T{ 2 }; }
+		tvec center() const noexcept { return p1 + half_size(); }
+		trec2& set_center(tvec pos) noexcept { const auto hw = half_size(); p1 = pos - hw; p2 = pos + hw; return *this; }
 		trec2 at_center(tvec pos) const noexcept { auto copy = *this; copy.set_center(pos); return copy; }
 
 		trec2 local() const noexcept { return { tvec{}, size() }; }
@@ -151,5 +151,9 @@ struct ivec_hash {
 };
 
 #define GAMELIB_GLM
+#ifdef GAMELIB_JSON
 #include "../Combos/GLM+JSON.h"
+#endif
+#ifdef GAMELIB_FORMAT
 #include "../Combos/Format+GLM.h"
+#endif

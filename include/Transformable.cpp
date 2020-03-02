@@ -28,7 +28,7 @@ namespace gamelib
 			al_identity_transform(&mTransform);
 			al_translate_transform(&mTransform, -mOrigin.x, -mOrigin.y);
 			al_scale_transform(&mTransform, mScale.x, mScale.y);
-			al_rotate_transform(&mTransform, mRotation);
+			al_rotate_transform(&mTransform, mRotation.Value);
 			al_translate_transform(&mTransform, (mOrigin.x + mPosition.x) * mScale.x, (mOrigin.y + mPosition.y) * mScale.y);
 			mTransformUpdated = true;
 			mInverseTransformUpdated = false;

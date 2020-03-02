@@ -28,7 +28,7 @@ namespace gamelib
 	{
 		ICamera() noexcept = default;
 		ICamera(ALLEGRO_DISPLAY* display) noexcept;
-		ICamera(screen_bounds_t const& sbounds, world_bounds_t const& wbounds, double rotation = 0) noexcept;
+		ICamera(screen_bounds_t const& sbounds, world_bounds_t const& wbounds, radians_t rotation = radians_t{ 0.0f }) noexcept;
 
 		ghassanpl::enum_flags<DrawLayer> DrawLayers = ghassanpl::enum_flags<DrawLayer>::all();
 
@@ -63,7 +63,7 @@ namespace gamelib
 		world_pos_t ToWorldSpace(screen_pos_t pos) const { return world_pos_t{ ScreenSpaceToWorldSpace(pos.get()) }; }
 
 		rec2 GetWorldBounds() const;
-		void SetWorldBounds(rec2 const& rect, float rotation);
+		void SetWorldBounds(rec2 const& rect, radians_t rotation);
 
 		void SetWorldSize(vec2 size);
 		void SetWorldCenter(vec2 pos);
@@ -79,8 +79,8 @@ namespace gamelib
 		auto GetTransform() const -> ALLEGRO_TRANSFORM const& { return mTransformable.GetTransform(); }
 		auto GetInverseTransform() const -> ALLEGRO_TRANSFORM const& { return mTransformable.GetInverseTransform(); }
 
-		auto GetRotation() const -> double { return mTransformable.GetRotation(); }
-		auto SetRotation(double rot) -> void { mTransformable.SetRotation(rot); }
+		auto GetRotation() const -> radians_t { return mTransformable.GetRotation(); }
+		auto SetRotation(radians_t rot) -> void { mTransformable.SetRotation(rot); }
 
 		void ScreenZoom(vec2 screen_anchor, double zoom_by);
 		void WorldZoom(vec2 world_anchor, double zoom_by);
@@ -96,8 +96,6 @@ namespace gamelib
 		Transformable mTransformable;
 
 		irec2 mViewport;
-
-		double mZoom = 0;
 	};
 
 }

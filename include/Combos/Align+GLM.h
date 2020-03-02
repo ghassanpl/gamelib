@@ -1,5 +1,5 @@
 #pragma once
-#if defined(GAMELIB_ALIGN) && defined(GAMELIB_GLM)
+
 namespace gamelib
 {
 	template <typename T>
@@ -8,4 +8,3 @@ namespace gamelib
 	}
 
 }
-#endif

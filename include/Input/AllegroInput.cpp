@@ -3,7 +3,7 @@
 #include "../Includes/MagicEnum.h"
 #include <allegro5/keyboard.h>
 #include <allegro5/joystick.h>
-#include "../../../assuming/include/assuming.h"
+#include "../Includes/Assuming.h"
 
 namespace gamelib
 {

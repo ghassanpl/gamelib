@@ -166,6 +166,7 @@
     <ClInclude Include="include\Debugger.h" />
     <ClInclude Include="include\ErrorReporter.h" />
     <ClInclude Include="include\Includes\Allegro.h" />
+    <ClInclude Include="include\Includes\Assuming.h" />
     <ClInclude Include="include\Includes\EnumFlags.h" />
     <ClInclude Include="include\Includes\Format.h" />
     <ClInclude Include="include\Includes\GLM.h" />
@@ -174,14 +175,24 @@
     <ClInclude Include="include\Input\AllegroInput.h" />
     <ClInclude Include="include\Input\InputDevice.h" />
     <ClInclude Include="include\Input\InputSystem.h" />
+    <ClInclude Include="include\Navigation\Grid.h" />
+    <ClInclude Include="include\Navigation\Grid.impl.h" />
+    <ClInclude Include="include\Navigation\Maze.h" />
+    <ClInclude Include="include\Navigation\Navigation.h" />
+    <ClInclude Include="include\Navigation\Navigation.impl.h" />
+    <ClInclude Include="include\Navigation\Squares.h" />
+    <ClInclude Include="include\Random.h" />
+    <ClInclude Include="include\Resources\Resource.h" />
     <ClInclude Include="include\Transformable.h" />
     <ClInclude Include="include\Utils\PanZoomer.h" />
+    <ClInclude Include="IResource.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="include\Camera.cpp" />
     <ClCompile Include="include\Input\AllegroInput.cpp" />
     <ClCompile Include="include\Input\InputDevice.cpp" />
     <ClCompile Include="include\Input\InputSystem.cpp" />
+    <ClCompile Include="include\Navigation\Navigation.cpp" />
     <ClCompile Include="include\Transformable.cpp" />
     <ClCompile Include="src\ErrorReporter.cpp" />
   </ItemGroup>
