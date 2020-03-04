@@ -25,9 +25,9 @@ namespace gamelib::squares
 
 		while (!wall_list.empty())
 		{
-			auto i = rng.Random(wall_list.size());
-			auto [parent, child] = wall_list[i];
-			wall_list.erase(wall_list.begin() + i);
+			auto it = random::Iterator(rng, wall_list);
+			auto [parent, child] = *it;
+			wall_list.erase(it);
 
 			if (visited.count(parent) != visited.count(child))
 			{

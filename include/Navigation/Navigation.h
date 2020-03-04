@@ -27,28 +27,47 @@ namespace gamelib::squares
 		ghassanpl::enum_flags<TileFlags> Flags;
 		ivec2 Predecessor{ -1, -1 };
 		Color LightColor = Colors::Black;
+		DirectionBitmap Adjacency{ 0xFF };
 	};
 
 	struct NavigationGrid : Grid<NavigationTile>
 	{
 		void ClearData(ghassanpl::enum_flags<NavigationTile::TileFlags> unset_flags = ghassanpl::enum_flags<NavigationTile::TileFlags>::all());
 
+		template <uint64_t FLAGS = ghassanpl::flag_bits(IterationFlags::OnlyValid, IterationFlags::Diagonals), typename PASSABLE_FUNCTION>
+		void BuildAdjacency(PASSABLE_FUNCTION&& passable_func);
+
+		/// Uses the `BlocksPassage` flag to determine whether tiles are adjacent
+		template <uint64_t FLAGS = ghassanpl::flag_bits(IterationFlags::OnlyValid, IterationFlags::Diagonals)>
+		void BuildAdjacency();
+
+		void BreakAdjacency(ivec2 pos, Direction dir, bool two_ways = true);
+		void SetAdjacent(ivec2 pos, Direction dir, bool two_ways = true);
+
+		void BreakAdjacency(irec2 const& room);
+
+		template <uint64_t FLAGS = ghassanpl::flag_bits(IterationFlags::WithSelf, IterationFlags::OnlyValid), typename FUNC>
+		auto ForEachAdjacentNeighbor(ivec2 of, FUNC&& func) const;
+
 		/// Returns the REVERSED path, for ease of popping
 		template <bool DIAGONALS = true, typename PASSABLE_FUNCTION>
 		std::vector<ivec2> BreadthFirstSearch(ivec2 start, ivec2 goal, PASSABLE_FUNCTION&& passable_func);
 
+		/// Uses the `BlocksPassage` flag to determine whether tiles are adjacent
 		std::vector<ivec2> BreadthFirstSearch(ivec2 start, ivec2 goal, bool diagonals = true);
 
 		/// Returns the REVERSED path, for ease of popping
 		template <bool DIAGONALS = true, typename PASSABLE_FUNCTION, typename COST_FUNCTION>
 		std::vector<ivec2> DijkstraSearch(ivec2 start, ivec2 goal, PASSABLE_FUNCTION&& passable_func, double max_cost, COST_FUNCTION&& cost_function);
 
+		/// Uses the `BlocksPassage` flag to determine whether tiles are adjacent
 		std::vector<ivec2> DijkstraSearch(ivec2 start, ivec2 goal, double max_cost, bool diagonals = true);
 
 		/// Returns the REVERSED path, for ease of popping
 		template <bool DIAGONALS = true, typename PASSABLE_FUNCTION, typename HEURISTIC_FUNCTION, typename COST_FUNCTION>
 		std::vector<ivec2> AStarSearch(ivec2 start, ivec2 goal, PASSABLE_FUNCTION&& passable_func, HEURISTIC_FUNCTION&& heuristic, COST_FUNCTION&& cost_function);
 
+		/// Uses the `BlocksPassage` flag to determine whether tiles are adjacent
 		std::vector<ivec2> AStarSearch(ivec2 start, ivec2 goal, bool diagonals = true);
 
 		double& Cost(ivec2 pos) noexcept { return At(pos)->Cost; }
@@ -71,6 +90,8 @@ namespace gamelib::squares
 		FLAG_METHODS(WasSeen)
 		FLAG_METHODS(Lit)
 
+		bool Adjacent(ivec2 from, ivec2 to) const;
+
 		template <typename FUNC>
 		void SmoothPath(std::vector<ivec2>& path, FUNC&& blocks_func) const;
 
@@ -86,10 +107,6 @@ namespace gamelib::squares
 		template <typename IS_TRANSPARENT_FUNC, typename SET_VISIBLE_FUNC>
 		void CastFOV(ivec2 center, int row, float start, float end, int radius, int r2, int xx, int xy, int yx, int yy, int id, bool light_walls,
 			const IS_TRANSPARENT_FUNC& is_transparent, const SET_VISIBLE_FUNC& set_visible);
-
-		struct SearchPriorityQueue
-		{
-		};
 
 		std::vector<ivec2> ReconstructPath(ivec2 start, ivec2 goal) const;
 

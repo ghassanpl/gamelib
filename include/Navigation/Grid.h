@@ -36,14 +36,12 @@ namespace gamelib::squares
 			Diagonals
 		};
 
-		template <uint64_t FLAGS = ghassanpl::flag_bits(IterationFlags::WithSelf, IterationFlags::OnlyValid), typename FUNC >
+		template <uint64_t FLAGS = ghassanpl::flag_bits(IterationFlags::WithSelf, IterationFlags::OnlyValid), typename FUNC>
 		auto ForEachNeighbor(ivec2 of, FUNC&& func) const;
 
-		//template <typename FUNC>
-		//auto ForEachSurrounding(ivec2 of, FUNC&& func, bool with_self = true, bool only_valid = true) const;
-
+		/// TODO: Change `neighbor_bitmap` to enum_flags<Direction>
 		template <uint64_t FLAGS = ghassanpl::flag_bits(IterationFlags::WithSelf, IterationFlags::OnlyValid), typename FUNC>
-		auto ForEachSelectedNeighbor(ivec2 of, uint8_t neighbor_bitmap, FUNC&& func) const;
+		auto ForEachSelectedNeighbor(ivec2 of, DirectionBitmap neighbor_bitmap, FUNC&& func) const;
 
 		template <uint64_t FLAGS = ghassanpl::flag_bits(IterationFlags::OnlyValid), typename FUNC>
 		auto ForEachInRect(irec2 const& tile_rect, FUNC&& functrue) const;
@@ -66,6 +64,7 @@ namespace gamelib::squares
 		bool LineCast(ivec2 start, ivec2 end, FUNC&& blocks_func, bool ignore_start) const;
 
 		bool IsValid(int x, int y) const noexcept { return x >= 0 && y >= 0 && (size_t)x < mWidth && (size_t)y < mHeight; }
+		bool IsValid(vec2 world_pos, vec2 tile_size) const noexcept { return IsValid(WorldPositionToTilePosition(world_pos, tile_size)); }
 		bool IsValid(ivec2 pos) const noexcept { return IsValid(pos.x, pos.y); }
 		bool IsIndexValid(int index) const noexcept { return index >= 0 && index < (int)mTiles.size(); }
 
@@ -86,11 +85,10 @@ namespace gamelib::squares
 		uvec2 Size() const noexcept { return { unsigned(mWidth), unsigned(mHeight) }; }
 		gsl::span<TILE_DATA const> Tiles() const { return mTiles; }
 
-		/// Searches
-
-		//using PredecessorMap = std::unordered_map<ivec2, ivec2, ivec_hash>;
-		//template <typename COST>
-		//using CostMap = std::unordered_map<ivec2, COST, ivec_hash>;
+		vec2 TilePositionToWorldPosition(ivec2 tile_pos, vec2 tile_size) const { return vec2(tile_pos) * tile_size; }
+		/// TODO: Make sure this is correct, cause man, floating point rounding...
+		ivec2 WorldPositionToTilePosition(vec2 world_pos, vec2 tile_size) const { return ivec2(world_pos / tile_size); }
+		rec2 RectForTile(ivec2 pos, vec2 tile_size) const { return rec2::from_size(TilePositionToWorldPosition(pos), tile_size); }
 
 		/// Modifiers
 

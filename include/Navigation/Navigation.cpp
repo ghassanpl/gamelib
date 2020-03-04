@@ -13,6 +13,40 @@ namespace gamelib::squares
 		}
 	}
 
+	void NavigationGrid::BreakAdjacency(ivec2 pos, Direction dir, bool two_ways)
+	{
+		if (auto tile = At(pos))
+			tile->Adjacency.unset(dir);
+
+		if (!two_ways) return;
+		if (auto neighbor = At(pos + ToVector(dir)))
+			neighbor->Adjacency.unset(Opposite(dir));
+	}
+
+	void NavigationGrid::SetAdjacent(ivec2 pos, Direction dir, bool two_ways)
+	{
+		if (auto tile = At(pos))
+			tile->Adjacency.set(dir);
+		
+		if (!two_ways) return;
+		if (auto neighbor = At(pos + ToVector(dir)))
+			neighbor->Adjacency.set(Opposite(dir));
+	}
+
+	void NavigationGrid::BreakAdjacency(irec2 const& room)
+	{
+		for (auto x = room.p1.x; x < room.p2.x; x++)
+		{
+			BreakAdjacency({ x, room.p1.y }, Direction::Up, true);
+			BreakAdjacency({ x, room.p2.y - 1 }, Direction::Down, true);
+		}
+		for (auto y = room.p1.y; y < room.p2.y; y++)
+		{
+			BreakAdjacency({ room.p1.x, y }, Direction::Left, true);
+			BreakAdjacency({ room.p2.x - 1, y }, Direction::Right, true);
+		}
+	}
+
 	/*
 	/// TODO: Should we move this to Combos?
 	void NavigationGrid::InitFrom(TileLayer const* layer)
@@ -33,7 +67,7 @@ namespace gamelib::squares
 		{
 			return BreadthFirstSearch<true>(start, goal, [&, goal](ivec2 from, ivec2 to) {
 				return (to == goal || !BlocksPassage(to)) && (!IsDiagonalNeighbor(from, to) || (!BlocksPassage({ from.x, to.y }) && BlocksPassage({ to.x, from.y })));
-				});
+			});
 		}
 		else
 		{
@@ -49,13 +83,13 @@ namespace gamelib::squares
 		{
 			return DijkstraSearch<true>(start, goal, [&, goal](ivec2 from, ivec2 to) {
 				return (to == goal || !BlocksPassage(to)) && (!IsDiagonalNeighbor(from, to) || (!BlocksPassage({ from.x, to.y }) && BlocksPassage({ to.x, from.y })));
-				}, max_cost, len);
+			}, max_cost, len);
 		}
 		else
 		{
 			return DijkstraSearch<false>(start, goal, [&, goal](ivec2 from, ivec2 to) {
 				return (to == goal || !BlocksPassage(to));
-				}, max_cost, len);
+			}, max_cost, len);
 		}
 	}
 
@@ -65,13 +99,13 @@ namespace gamelib::squares
 		{
 			return AStarSearch<true>(start, goal, [&, goal](ivec2 from, ivec2 to) {
 				return (to == goal || !BlocksPassage(to)) && (!IsDiagonalNeighbor(from, to) || (!BlocksPassage({ from.x, to.y }) && BlocksPassage({ to.x, from.y })));
-				}, len, len);
+			}, len, len);
 		}
 		else
 		{
 			return AStarSearch<false>(start, goal, [&, goal](ivec2 from, ivec2 to) {
 				return (to == goal || !BlocksPassage(to));
-				}, len, len);
+			}, len, len);
 		}
 	}
 

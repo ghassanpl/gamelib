@@ -1,6 +1,6 @@
-#include <boost/callable_traits/return_type.hpp>
 #include <set>
 #include <queue>
+#include "Grid.h"
 
 namespace gamelib::squares
 {
@@ -8,12 +8,14 @@ namespace gamelib::squares
 	template<uint64_t FLAGS, typename FUNC>
 	inline auto Grid<TILE_DATA>::ForEachNeighbor(ivec2 of, FUNC&& func) const
 	{
+		using return_type = decltype(func(ivec2{}));
+		static_assert(std::is_void_v<return_type> || std::is_convertible_v<return_type, bool>, "return type of tile callback must be either void or convertible to bool");
 		static constexpr auto ONLY_VALID = ghassanpl::is_flag_set(FLAGS, IterationFlags::OnlyValid);
-		if constexpr (std::is_void_v<boost::callable_traits::return_type_t<FUNC>>)
+		
+		if constexpr (std::is_void_v<return_type>)
 		{
-			using return_type = boost::callable_traits::return_type_t<FUNC>;
 			if constexpr (ghassanpl::is_flag_set(FLAGS, IterationFlags::WithSelf))
-				Apply<ONLY_VALID>({ of.x, of.y }, func);
+				Apply<ONLY_VALID>(of, func);
 			Apply<ONLY_VALID>({ of.x - 1, of.y }, func);
 			Apply<ONLY_VALID>({ of.x + 1, of.y }, func);
 			Apply<ONLY_VALID>({ of.x, of.y - 1 }, func);
@@ -30,7 +32,7 @@ namespace gamelib::squares
 		else
 		{
 			if constexpr (ghassanpl::is_flag_set(FLAGS, IterationFlags::WithSelf))
-				if (auto ret = Apply<ONLY_VALID>({ of.x, of.y }, func)) return ret;
+				if (auto ret = Apply<ONLY_VALID>(of, func)) return ret;
 			if (auto ret = Apply<ONLY_VALID>({ of.x - 1, of.y }, func)) return ret;
 			if (auto ret = Apply<ONLY_VALID>({ of.x + 1, of.y }, func)) return ret;
 			if (auto ret = Apply<ONLY_VALID>({ of.x, of.y - 1 }, func)) return ret;
@@ -43,49 +45,48 @@ namespace gamelib::squares
 				if (auto ret = Apply<ONLY_VALID>({ of.x + 1, of.y - 1 }, func)) return ret;
 				if (auto ret = Apply<ONLY_VALID>({ of.x - 1, of.y + 1 }, func)) return ret;
 			}
-			return decltype(func({})){};
+			return return_type{};
 		}
 	}
 
 	template<typename TILE_DATA>
 	template<uint64_t FLAGS, typename FUNC>
-	inline auto Grid<TILE_DATA>::ForEachSelectedNeighbor(ivec2 of, uint8_t neighbor_bitmap, FUNC&& func) const
+	inline auto Grid<TILE_DATA>::ForEachSelectedNeighbor(ivec2 of, DirectionBitmap neighbor_bitmap, FUNC&& func) const
 	{
+		using return_type = decltype(func(ivec2{}));
+		static_assert(std::is_void_v<return_type> || std::is_convertible_v<return_type, bool>, "return type of tile callback must be either void or convertible to bool");
 		static constexpr auto ONLY_VALID = ghassanpl::is_flag_set(FLAGS, IterationFlags::OnlyValid);
-		if constexpr (std::is_void_v<boost::callable_traits::return_type_t<FUNC>>)
+		
+		if constexpr (std::is_void_v<return_type>)
 		{
 			if constexpr (ghassanpl::is_flag_set(FLAGS, IterationFlags::WithSelf))
-				Apply<ONLY_VALID>({ of.x, of.y }, func);
-			if (neighbor_bitmap & (1 << 0)) Apply<ONLY_VALID>({ of.x - 1, of.y }, func);
-			if (neighbor_bitmap & (1 << 1)) Apply<ONLY_VALID>({ of.x + 1, of.y }, func);
-			if (neighbor_bitmap & (1 << 2)) Apply<ONLY_VALID>({ of.x, of.y - 1 }, func);
-			if (neighbor_bitmap & (1 << 3)) Apply<ONLY_VALID>({ of.x, of.y + 1 }, func);
-
-			if constexpr (ghassanpl::is_flag_set(FLAGS, IterationFlags::Diagonals))
-			{
-				if (neighbor_bitmap & (1 << 4)) Apply<ONLY_VALID>({ of.x - 1, of.y - 1 }, func);
-				if (neighbor_bitmap & (1 << 5)) Apply<ONLY_VALID>({ of.x + 1, of.y + 1 }, func);
-				if (neighbor_bitmap & (1 << 6)) Apply<ONLY_VALID>({ of.x + 1, of.y - 1 }, func);
-				if (neighbor_bitmap & (1 << 7)) Apply<ONLY_VALID>({ of.x - 1, of.y + 1 }, func);
-			}
+				Apply<ONLY_VALID>(of, func);
+#define TEST(v) if (neighbor_bitmap.is_set(Direction::v)) Apply<ONLY_VALID>(of + ToVector(Direction::v), func)
+			TEST(Right);
+			TEST(RightDown);
+			TEST(Down);
+			TEST(LeftDown);
+			TEST(Left);
+			TEST(LeftUp);
+			TEST(Up);
+			TEST(RightUp);
 		}
 		else
 		{
 			if constexpr (ghassanpl::is_flag_set(FLAGS, IterationFlags::WithSelf))
-				if (auto ret = Apply<ONLY_VALID>({ of.x, of.y }, func)) return ret;
-			if (neighbor_bitmap & (1 << 0)) if (auto ret = Apply<ONLY_VALID>({ of.x - 1, of.y }, func)) return ret;
-			if (neighbor_bitmap & (1 << 1)) if (auto ret = Apply<ONLY_VALID>({ of.x + 1, of.y }, func)) return ret;
-			if (neighbor_bitmap & (1 << 2)) if (auto ret = Apply<ONLY_VALID>({ of.x, of.y - 1 }, func)) return ret;
-			if (neighbor_bitmap & (1 << 3)) if (auto ret = Apply<ONLY_VALID>({ of.x, of.y + 1 }, func)) return ret;
-
-			if constexpr (ghassanpl::is_flag_set(FLAGS, IterationFlags::Diagonals))
-			{
-				if (neighbor_bitmap & (1 << 4)) if (auto ret = Apply<ONLY_VALID>({ of.x - 1, of.y - 1 }, func)) return ret;
-				if (neighbor_bitmap & (1 << 5)) if (auto ret = Apply<ONLY_VALID>({ of.x + 1, of.y + 1 }, func)) return ret;
-				if (neighbor_bitmap & (1 << 6)) if (auto ret = Apply<ONLY_VALID>({ of.x + 1, of.y - 1 }, func)) return ret;
-				if (neighbor_bitmap & (1 << 7)) if (auto ret = Apply<ONLY_VALID>({ of.x - 1, of.y + 1 }, func)) return ret;
-			}
-			return decltype(func({})){};
+				if (auto ret = Apply<ONLY_VALID>(of, func)) return ret;
+#undef TEST
+#define TEST(v) if (neighbor_bitmap.is_set(Direction::v)) if (auto ret = Apply<ONLY_VALID>(of + ToVector(Direction::v), func)) return ret
+			TEST(Right);
+			TEST(RightDown);
+			TEST(Down);
+			TEST(LeftDown);
+			TEST(Left);
+			TEST(LeftUp);
+			TEST(Up);
+			TEST(RightUp);
+			return return_type{};
+#undef TEST
 		}
 	}
 
@@ -93,47 +94,83 @@ namespace gamelib::squares
 	template<uint64_t FLAGS, typename FUNC>
 	inline auto Grid<TILE_DATA>::ForEachInRect(irec2 const& tile_rect, FUNC&& func) const
 	{
+		using return_type = decltype(func(ivec2{}));
+		static_assert(std::is_void_v<return_type> || std::is_convertible_v<return_type, bool>, "return type of tile callback must be either void or convertible to bool");
 		static constexpr auto ONLY_VALID = ghassanpl::is_flag_set(FLAGS, IterationFlags::OnlyValid);
-		for (int y = tile_rect.top(); y < tile_rect.bottom(); y++)
+		
+		if constexpr (std::is_void_v<return_type>)
 		{
-			for (int x = tile_rect.left(); x < tile_rect.right(); x++)
-			{
-				if (auto ret = Apply<ONLY_VALID>({ x, y }, func)) return ret;
-			}
+			for (int y = tile_rect.top(); y < tile_rect.bottom(); y++)
+				for (int x = tile_rect.left(); x < tile_rect.right(); x++)
+					Apply<ONLY_VALID>({ x, y }, func);
 		}
+		else
+		{
+			for (int y = tile_rect.top(); y < tile_rect.bottom(); y++)
+				for (int x = tile_rect.left(); x < tile_rect.right(); x++)
+					if (auto ret = Apply<ONLY_VALID>({ x, y }, func)) return ret;
 
-		return decltype(func({})){};
+			return return_type{};
+		}
 	}
 
 	template<typename TILE_DATA>
 	template<uint64_t FLAGS, typename FUNC>
 	auto Grid<TILE_DATA>::ForEachInPerimeter(irec2 const& tile_rect, FUNC&& func) const
 	{
+		using return_type = decltype(func(ivec2{}));
+		static_assert(std::is_void_v<return_type> || std::is_convertible_v<return_type, bool>, "return type of tile callback must be either void or convertible to bool");
 		static constexpr auto ONLY_VALID = ghassanpl::is_flag_set(FLAGS, IterationFlags::OnlyValid);
-		for (int x = tile_rect.left(); x < tile_rect.right(); x++)
-		{
-			if (auto ret = Apply<ONLY_VALID>({ x, tile_rect.top() }, func)) return ret;
-			if (auto ret = Apply<ONLY_VALID>({ x, tile_rect.bottom() - 1 }, func)) return ret;
-		}
-		for (int y = tile_rect.top() + 1; y < tile_rect.bottom() - 1; y++)
-		{
-			if (auto ret = Apply<ONLY_VALID>({ tile_rect.left(), y }, func)) return ret;
-			if (auto ret = Apply<ONLY_VALID>({ tile_rect.right() - 1, y }, func)) return ret;
-		}
 
-		return decltype(func({})){};
+		if constexpr (std::is_void_v<return_type>)
+		{
+			for (int x = tile_rect.left(); x < tile_rect.right(); x++)
+			{
+				Apply<ONLY_VALID>({ x, tile_rect.top() }, func);
+				Apply<ONLY_VALID>({ x, tile_rect.bottom() - 1 }, func);
+			}
+			for (int y = tile_rect.top() + 1; y < tile_rect.bottom() - 1; y++)
+			{
+				Apply<ONLY_VALID>({ tile_rect.left(), y }, func);
+				Apply<ONLY_VALID>({ tile_rect.right() - 1, y }, func);
+			}
+		}
+		else
+		{
+			for (int x = tile_rect.left(); x < tile_rect.right(); x++)
+			{
+				if (auto ret = Apply<ONLY_VALID>({ x, tile_rect.top() }, func)) return ret;
+				if (auto ret = Apply<ONLY_VALID>({ x, tile_rect.bottom() - 1 }, func)) return ret;
+			}
+			for (int y = tile_rect.top() + 1; y < tile_rect.bottom() - 1; y++)
+			{
+				if (auto ret = Apply<ONLY_VALID>({ tile_rect.left(), y }, func)) return ret;
+				if (auto ret = Apply<ONLY_VALID>({ tile_rect.right() - 1, y }, func)) return ret;
+			}
+
+			return return_type{};
+		}
 	}
 
 	template<typename TILE_DATA>
 	template<uint64_t FLAGS, typename TILE_SET, typename FUNC>
 	auto Grid<TILE_DATA>::ForEachInSet(TILE_SET&& tiles, FUNC&& func) const
 	{
+		using return_type = decltype(func(ivec2{}));
+		static_assert(std::is_void_v<return_type> || std::is_convertible_v<return_type, bool>, "return type of tile callback must be either void or convertible to bool");
 		static constexpr auto ONLY_VALID = ghassanpl::is_flag_set(FLAGS, IterationFlags::OnlyValid);
-		for (auto&& tile : tiles)
+		
+		if constexpr (std::is_void_v<return_type>)
 		{
-			if (auto ret = Apply<ONLY_VALID>(tile, func)) return ret;
+			for (auto&& tile : tiles)
+				Apply<ONLY_VALID>(tile, func);
 		}
-		return decltype(func({})){};
+		else
+		{
+			for (auto&& tile : tiles)
+				if (auto ret = Apply<ONLY_VALID>(tile, func)) return ret;
+			return return_type{};
+		}
 	}
 
 	template<typename TILE_DATA>
@@ -223,16 +260,16 @@ namespace gamelib::squares
 	template<bool ONLY_VALID, typename FUNC>
 	auto Grid<TILE_DATA>::Apply(ivec2 to, FUNC&& func) const
 	{
-		if constexpr (std::is_void_v<boost::callable_traits::return_type_t<FUNC>>)
+		using return_type = decltype(func(ivec2{}));
+		if constexpr (std::is_void_v<return_type>)
 		{
-			if (!ONLY_VALID || IsValid(to))
-				func(to);
+			if constexpr (ONLY_VALID) if (!IsValid(to)) return;
+			func(to);
 		}
 		else
 		{
-			if (!ONLY_VALID || IsValid(to))
-				return func(to);
-			return decltype(func(ivec2{})){};
+			if constexpr (ONLY_VALID) if (!IsValid(to)) return return_type{};
+			return func(to);
 		}
 	}
 

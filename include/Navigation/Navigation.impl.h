@@ -1,8 +1,50 @@
+#include "Navigation.h"
 #pragma once
 
 namespace gamelib::squares
 {
 	/// TODO: http://squidpony.github.io/SquidLib/squidlib/apidocs/squidpony/squidgrid/gui/gdx/LightingHandler.html
+
+	inline bool NavigationGrid::Adjacent(ivec2 const from, ivec2 const to) const
+	{
+		if (from == to) return true;
+		if (!IsSurrounding(from, to)) return false;
+		return At(from)->Adjacency.is_set(ToDirection(to - from));
+	}
+
+	template <uint64_t FLAGS, typename PASSABLE_FUNCTION>
+	inline void NavigationGrid::BuildAdjacency(PASSABLE_FUNCTION&& passable_func)
+	{
+		static constexpr auto ONLY_VALID = ghassanpl::is_flag_set(FLAGS, IterationFlags::OnlyValid);
+		static constexpr auto dirs = ghassanpl::is_flag_set(FLAGS, IterationFlags::Diagonals) ? AllDirections : AllCardinalDirections;
+
+		ForEach<FLAGS>([this, &passable_func](ivec2 pos) {
+			auto& adj = At(pos)->Adjacency;
+			adj.bits = 0;
+			dirs.for_each([this, &adj, pos, &passable_func](Direction dir) {
+				const auto neighbor = pos + ToVector(dir);
+				if constexpr (ONLY_VALID) if (!IsValid(neighbor)) return;
+				if (passable_func(pos, neighbor))
+					adj.set(dir);
+			});
+		});
+	}
+
+	template<uint64_t FLAGS>
+	inline void NavigationGrid::BuildAdjacency()
+	{
+		static constexpr auto ONLY_VALID = ghassanpl::is_flag_set(FLAGS, IterationFlags::OnlyValid);
+		BuildAdjacency<FLAGS>([this](ivec2 from, ivec2 to) {
+			if constexpr (ONLY_VALID) if (!IsValid(to)) return false;
+			return !BlocksPassage(to) || (!IsDiagonalNeighbor(from, to) || (!BlocksPassage({ from.x, to.y }) && BlocksPassage({ to.x, from.y })));
+		});
+	}
+
+	template<uint64_t FLAGS, typename FUNC>
+	inline auto NavigationGrid::ForEachAdjacentNeighbor(ivec2 of, FUNC&& func) const
+	{
+		return ForEachSelectedNeighbor<FLAGS>(of, At(of)->Adjacency, std::forward<FUNC>(func));
+	}
 
 	template<bool DIAGONALS, typename PASSABLE_FUNCTION>
 	std::vector<ivec2> NavigationGrid::BreadthFirstSearch(ivec2 start, ivec2 goal, PASSABLE_FUNCTION&& passable_func)
@@ -31,7 +73,7 @@ namespace gamelib::squares
 					frontier.push(next);
 					Predecessor(next) = current;
 				}
-				});
+			});
 		}
 
 		return ReconstructPath(start, goal);

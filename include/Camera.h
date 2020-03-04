@@ -5,6 +5,8 @@
 #include "Includes/EnumFlags.h"
 #include "Transformable.h"
 
+struct ALLEGRO_BITMAP;
+
 namespace gamelib
 {
 
@@ -13,8 +15,6 @@ namespace gamelib
 		First = 0,
 		Last = 63
 	};
-
-	struct ALLEGRO_BITMAP;
 
 	using screen_pos_t = named<vec2, struct ScreenSpace>;
 	using camera_pos_t = named<vec2, struct CameraSpace>;

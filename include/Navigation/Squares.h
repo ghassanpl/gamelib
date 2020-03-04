@@ -7,20 +7,9 @@
 namespace gamelib::squares
 {
 
-	inline bool IsSurrounding(ivec2 a, ivec2 b)
-	{
-		return std::abs(a.x - b.x) < 2 && std::abs(a.y - b.y) < 2;
-	}
-
-	inline bool IsNeighbor(ivec2 a, ivec2 b)
-	{
-		return IsSurrounding(a, b) && std::abs(a.y - b.y) != std::abs(a.x - b.x);
-	}
-
-	inline bool IsDiagonalNeighbor(ivec2 a, ivec2 b)
-	{
-		return IsSurrounding(a, b) && std::abs(a.y - b.y) == std::abs(a.x - b.x);
-	}
+	inline bool IsSurrounding(ivec2 const a, ivec2 const b) { return std::abs(a.x - b.x) < 2 && std::abs(a.y - b.y) < 2; }
+	inline bool IsNeighbor(ivec2 const a, ivec2 const b) { return IsSurrounding(a, b) && std::abs(a.y - b.y) != std::abs(a.x - b.x); }
+	inline bool IsDiagonalNeighbor(ivec2 const a, ivec2 const b) { return IsSurrounding(a, b) && std::abs(a.y - b.y) == std::abs(a.x - b.x); }
 
 	enum class Direction
 	{
@@ -46,6 +35,8 @@ namespace gamelib::squares
 		NorthEast
 	};
 
+	using DirectionBitmap = ghassanpl::enum_flags<Direction, uint8_t>;
+
 	inline constexpr Direction operator+(Direction dir, int d) { return (Direction)((int(dir) + d) % 8); }
 	inline constexpr Direction operator-(Direction dir, int d) { return (Direction)((int(dir) + (8 + (d % 8))) % 8); }
 
@@ -59,21 +50,28 @@ namespace gamelib::squares
 	inline constexpr Direction NextCardinal(Direction dir) { return dir + 2; }
 
 	namespace {
-		static constexpr const int DirectionOffset[] = { 1, 1, 0, -1, -1, -1, 0, 1 };
+		static constexpr const int DirectionToOffset[] = { 1, 1, 0, -1, -1, -1, 0, 1 };
+		static constexpr const int OffsetToDirection[] = { 5, 6, 7, 4, -1, 0, 3, 2, 1 };
 	}
 
-	inline constexpr int HorizontalOffset(Direction dir) { return DirectionOffset[(int)dir]; }
-	inline constexpr int VerticalOffset(Direction dir) { return DirectionOffset[int(dir + 6)]; }
+	inline constexpr int HorizontalOffset(Direction dir) { return DirectionToOffset[(int)dir]; }
+	inline constexpr int VerticalOffset(Direction dir) { return DirectionToOffset[int(dir + 6)]; }
 
 	inline constexpr bool IsCardinal(Direction dir) { return (int(dir) & 1) == 0; }
 	inline constexpr bool IsDiagonal(Direction dir) { return (int(dir) & 1) != 0; }
 
-	inline constexpr ghassanpl::enum_flags<Direction> AllCardinalDirections = { Direction::Left, Direction::Right, Direction::Up, Direction::Down };
-	inline constexpr ghassanpl::enum_flags<Direction> AllDiagonalDirections = { Direction::LeftUp, Direction::RightUp, Direction::RightDown, Direction::LeftDown };
+	inline constexpr DirectionBitmap AllCardinalDirections = { Direction::Left, Direction::Right, Direction::Up, Direction::Down };
+	inline constexpr DirectionBitmap AllDiagonalDirections = { Direction::LeftUp, Direction::RightUp, Direction::RightDown, Direction::LeftDown };
+	inline constexpr DirectionBitmap AllDirections = { Direction::LeftUp, Direction::RightUp, Direction::RightDown, Direction::LeftDown, Direction::Left, Direction::Right, Direction::Up, Direction::Down };
 
 	inline Direction ToDirection(radians_t angle)
 	{
 		return Direction(int(glm::mod(glm::degrees(angle.Value - glm::radians(45.0 / 2.0)), 360.0) / 45.0) % 8);
+	}
+
+	inline constexpr Direction ToDirection(ivec2 vec)
+	{
+		return (Direction)OffsetToDirection[vec.x + vec.y * 3 + 4];
 	}
 
 	inline constexpr radians_t ToRadians(Direction dir)
