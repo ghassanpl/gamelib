@@ -6,6 +6,7 @@
 
 namespace gamelib::squares
 {
+	/// TODO: template <typename TILE_DATA> struct SizedGrid : Grid<TileData> { private: vec2 mTileSize; };
 
 	template <typename TILE_DATA>
 	struct Grid
@@ -86,9 +87,8 @@ namespace gamelib::squares
 		gsl::span<TILE_DATA const> Tiles() const { return mTiles; }
 
 		vec2 TilePositionToWorldPosition(ivec2 tile_pos, vec2 tile_size) const { return vec2(tile_pos) * tile_size; }
-		/// TODO: Make sure this is correct, cause man, floating point rounding...
-		ivec2 WorldPositionToTilePosition(vec2 world_pos, vec2 tile_size) const { return ivec2(world_pos / tile_size); }
-		rec2 RectForTile(ivec2 pos, vec2 tile_size) const { return rec2::from_size(TilePositionToWorldPosition(pos), tile_size); }
+		ivec2 WorldPositionToTilePosition(vec2 world_pos, vec2 tile_size) const { return ivec2(glm::floor(world_pos / tile_size)); }
+		rec2 RectForTile(ivec2 pos, vec2 tile_size) const { return rec2::from_size(TilePositionToWorldPosition(pos, tile_size), tile_size); }
 
 		/// Modifiers
 

@@ -4,6 +4,7 @@
 #include <iosfwd>
 
 using seconds_t = double;
+using herz_t = double;
 
 ///************************************************************************/
 /// Annotations

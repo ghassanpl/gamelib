@@ -61,32 +61,19 @@ namespace gamelib::squares
 		{
 			if constexpr (ghassanpl::is_flag_set(FLAGS, IterationFlags::WithSelf))
 				Apply<ONLY_VALID>(of, func);
-#define TEST(v) if (neighbor_bitmap.is_set(Direction::v)) Apply<ONLY_VALID>(of + ToVector(Direction::v), func)
-			TEST(Right);
-			TEST(RightDown);
-			TEST(Down);
-			TEST(LeftDown);
-			TEST(Left);
-			TEST(LeftUp);
-			TEST(Up);
-			TEST(RightUp);
+
+			neighbor_bitmap.for_each([this, of, &func]() {
+				Apply<ONLY_VALID>(of + ToVector(Direction::v), func);
+			});
 		}
 		else
 		{
 			if constexpr (ghassanpl::is_flag_set(FLAGS, IterationFlags::WithSelf))
 				if (auto ret = Apply<ONLY_VALID>(of, func)) return ret;
-#undef TEST
-#define TEST(v) if (neighbor_bitmap.is_set(Direction::v)) if (auto ret = Apply<ONLY_VALID>(of + ToVector(Direction::v), func)) return ret
-			TEST(Right);
-			TEST(RightDown);
-			TEST(Down);
-			TEST(LeftDown);
-			TEST(Left);
-			TEST(LeftUp);
-			TEST(Up);
-			TEST(RightUp);
-			return return_type{};
-#undef TEST
+
+			return neighbor_bitmap.for_each([this, of, &func]() {
+				return Apply<ONLY_VALID>(of + ToVector(Direction::v), func);
+			});
 		}
 	}
 

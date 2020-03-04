@@ -183,6 +183,8 @@
     <ClInclude Include="include\Navigation\Squares.h" />
     <ClInclude Include="include\Random.h" />
     <ClInclude Include="include\Resources\Resource.h" />
+    <ClInclude Include="include\Timing.h" />
+    <ClInclude Include="include\Timing.impl.h" />
     <ClInclude Include="include\Transformable.h" />
     <ClInclude Include="include\Utils\PanZoomer.h" />
     <ClInclude Include="IResource.h" />

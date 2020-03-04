@@ -129,6 +129,12 @@
     <ClInclude Include="include\Random.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\Timing.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Timing.impl.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="include\Camera.cpp">

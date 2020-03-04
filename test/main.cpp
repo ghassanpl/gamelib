@@ -16,27 +16,67 @@
 #include <Debugger.h>
 #include <ErrorReporter.h>
 #include <Random.h>
+#include <Timing.h>
 #include <Navigation/Squares.h>
 #include <Navigation/Grid.h>
 #include <Navigation/Navigation.h>
 #include <Navigation/Maze.h>
 #include <Input/AllegroInput.h>
 #include <Utils/PanZoomer.h>
+#include <boost/intrusive/list.hpp>
 //#include <Resources/Map.h>
 
 using namespace gamelib;
 using namespace gamelib::squares;
 
+struct Map;
+
+struct TileObject
+{
+	TileObject(Map* pm, ivec2 at) : mParentMap(pm), mPosition(at) {}
+
+	Color Tint = Colors::White;
+	uvec2 Size{ 1,1 };
+	Direction WallPosition = Direction::None;
+	ALLEGRO_BITMAP* Texture = nullptr;
+	int RotationFlags = 0;
+
+	Map* ParentMap() const { return mParentMap; }
+	ivec2 Position() const { return mPosition; }
+
+	void MoveTo(ivec2 pos);
+	
+protected:
+
+	Map* mParentMap = nullptr;
+	ivec2 mPosition{};
+};
+
 struct RoomTile
 {
 	ALLEGRO_BITMAP* Bg = nullptr;
 	int RotationFlags = 0;
+
+	std::set<TileObject*> Objects;
 };
 
 struct Map
 {
 	Grid<RoomTile> RoomGrid;
 	NavigationGrid NavGrid;
+	std::vector<std::unique_ptr<TileObject>> Objects;
+
+	template <typename T, typename... ARGS>
+	T* SpawnObject(ivec2 pos, ARGS&&... args)
+	{
+		if (!RoomGrid.IsValid(pos)) return nullptr;
+
+		auto obj = std::make_unique<T>(this, pos, std::forward<ARGS>(args)...);
+		auto ptr = obj.get();
+		RoomGrid.At(pos)->Objects.insert(ptr);
+		Objects.push_back(std::move(obj));
+		return ptr;
+	}
 
 	void BuildRoom(irec2 const& room, ALLEGRO_BITMAP* bg)
 	{
@@ -53,14 +93,6 @@ struct Map
 		NavGrid.Reset(26, 19);
 		NavGrid.BuildAdjacency<ghassanpl::flag_bits(NavigationGrid::IterationFlags::OnlyValid)>();
 	}
-};
-
-struct TileObject
-{
-	ivec2 Position{};
-	uvec2 Size{ 1,1 };
-	Direction WallPosition = Direction::None;
-	ALLEGRO_BITMAP* Texture = nullptr;
 };
 
 int main()
@@ -82,6 +114,8 @@ int main()
 	al_register_event_source(queue, al_get_mouse_event_source());
 	al_register_event_source(queue, al_get_display_event_source(display));
 
+	al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
+
 	/// al_load_bitmap
 	/// al_set_blender
 	/*
@@ -90,18 +124,23 @@ int main()
 	*/
 
 	IErrorReporter reporter;
-
-	ICamera camera{display};
-	//camera.SetRotation(45.0);
-
+	TimingSystem timing{ al_get_time };
 	AllegroInput input{ reporter };
 	input.Init();
+	input.MapKeyAndButton('up', KeyboardKey::W, XboxGamepadButton::Up);
+	input.MapKeyAndButton('down', KeyboardKey::S, XboxGamepadButton::Down);
+	input.MapKeyAndButton('left', KeyboardKey::A, XboxGamepadButton::Left);
+	input.MapKeyAndButton('righ', KeyboardKey::D, XboxGamepadButton::Right);
+	ICamera camera{ display };
 	PanZoomer pz{ input, camera };
 
 	std::mt19937_64 rng;
 
 	ALLEGRO_BITMAP* tiles[7];
 	al_add_new_bitmap_flag(ALLEGRO_MIPMAP);
+	al_add_new_bitmap_flag(ALLEGRO_MIN_LINEAR);
+	al_add_new_bitmap_flag(ALLEGRO_MAG_LINEAR);
+	al_add_new_bitmap_flag(ALLEGRO_NO_PREMULTIPLIED_ALPHA);
 	tiles[0] = al_load_bitmap("data/tile.png");
 	tiles[1] = al_load_bitmap("data/tile2.png");
 	tiles[2] = al_load_bitmap("data/tile3.png");
@@ -109,6 +148,9 @@ int main()
 	tiles[4] = al_load_bitmap("data/green.png");
 	tiles[5] = al_load_bitmap("data/beige.png");
 	tiles[6] = al_load_bitmap("data/yellow.png");
+
+	ALLEGRO_BITMAP* characters[4]{};
+	characters[0] = al_load_bitmap("data/barbarian_shadow.png");
 
 	Map map;
 	map.RoomGrid.ForEach([&](ivec2 pos) {
@@ -119,6 +161,14 @@ int main()
 	map.BuildRoom(irec2::from_size(1, 1, 4, 3), tiles[4]);
 	map.BuildRoom(irec2::from_size(5, 1, 4, 3), tiles[5]);
 	map.BuildRoom(irec2::from_size(1, 4, 4, 5), tiles[6]);
+
+	auto player = map.SpawnObject<TileObject>({ 0,0 });
+	player->Texture = characters[0];
+
+	timing.Reset();
+
+	constexpr float tile_width = 128;
+	constexpr vec2 tile_size = { tile_width, tile_width };
 
 	bool quit = false;
 	while (!quit)
@@ -139,14 +189,37 @@ int main()
 			input.ProcessEvent(event);
 		}
 
-		double t = al_get_time();
-		double dt = 1. / 60.;
+		timing.Update();
 
 		/// //////////////////////////// ///
 		/// TODO: Update
 		/// //////////////////////////// ///
 
-		pz.Update(dt);
+		pz.Update(timing.TimeSinceLastFrame());
+
+		Direction move_dir = Direction::None;
+		if (input.WasButtonPressed('up'))
+			move_dir = Direction::Up;
+		else if (input.WasButtonPressed('left'))
+			move_dir = Direction::Left;
+		else if (input.WasButtonPressed('righ'))
+			move_dir = Direction::Right;
+		else if (input.WasButtonPressed('down'))
+			move_dir = Direction::Down;
+
+		if (move_dir != Direction::None)
+		{
+			const auto target_pos = player->Position() + ToVector(move_dir);
+			if (map.NavGrid.Adjacent(player->Position(), target_pos))
+			{
+				player->MoveTo(target_pos);
+				camera.SetWorldCenter(map.RoomGrid.TilePositionToWorldPosition(player->Position(), tile_size) + tile_size / 2.0f);
+				map.NavGrid.CalculateFOV(target_pos, 26, false);
+			}
+		}
+
+		auto mouse_tile_pos = map.RoomGrid.WorldPositionToTilePosition(camera.ScreenSpaceToWorldSpace(input.GetMousePosition()), tile_size);
+		auto mouse_tile = map.RoomGrid.At(mouse_tile_pos);
 
 		/// //////////////////////////// ///
 		/// Draw
@@ -156,56 +229,78 @@ int main()
 
 		al_use_transform(&camera.GetTransform());
 
-		auto mouse = camera.ScreenSpaceToWorldSpace(input.GetMousePosition());
-		/// al_hold_bitmap_drawing
-		/// al_draw_tinted_scaled_rotated_bitmap_region
-		constexpr float tile_size = 128;
-		constexpr float half_tile_size = tile_size / 2;
+		/// Floors
+		constexpr float half_tile_size = tile_width / 2;
 		for (size_t y = 0; y < map.RoomGrid.Height(); y++)
 		{
-			auto yp = y * tile_size;
+			auto yp = y * tile_width;
 			for (size_t x = 0; x < map.RoomGrid.Width(); x++)
 			{
-				auto xp = x * tile_size;
+				auto xp = x * tile_width;
 				auto tile = map.RoomGrid.At(x, y);
 				al_draw_rotated_bitmap(tile->Bg, half_tile_size, half_tile_size, xp + half_tile_size, yp + half_tile_size, glm::radians((tile->RotationFlags>>2)*90.0f), tile->RotationFlags&3);
 			}
 		}
 
+		/// Objects
+		for (size_t y = 0; y < map.RoomGrid.Height(); y++)
+		{
+			auto yp = y * tile_width;
+			for (size_t x = 0; x < map.RoomGrid.Width(); x++)
+			{
+				auto xp = x * tile_width;
+				auto tile = map.RoomGrid.At(x, y);
+				for (auto obj : tile->Objects)
+				{
+					al_draw_rotated_bitmap(obj->Texture, half_tile_size, half_tile_size, xp + half_tile_size, yp + half_tile_size, glm::radians((obj->RotationFlags >> 2) * 90.0f), obj->RotationFlags & 3);
+				}
+			}
+		}
+
+		/// Walls
 		constexpr auto wall_width = 10;
 		constexpr auto shadow_size = 20;
 		for (size_t y = 0; y < map.RoomGrid.Height(); y++)
 		{
-			auto yp = y * tile_size;
+			auto yp = y * tile_width;
 			for (size_t x = 0; x < map.RoomGrid.Width(); x++)
 			{
-				auto xp = x * tile_size;
+				auto xp = x * tile_width;
 				auto adj = map.NavGrid.At(x, y)->Adjacency;
 				if (!adj.is_set(Direction::Left))
 				{
 					float shadow[] = {
-						xp, yp + tile_size,
+						xp, yp + tile_width,
 						xp, yp,
-						xp - shadow_size, (yp + shadow_size),
-						xp - shadow_size, yp + tile_size + shadow_size,
+						xp - shadow_size, (yp + shadow_size) ,
+						xp - shadow_size, yp + tile_width + shadow_size ,
 					};
-					al_draw_filled_polygon(shadow, 4, ToAllegro(Colors::Black));
-					al_draw_line(xp, yp - wall_width / 2, xp, yp + tile_size + wall_width / 2, ToAllegro(Colors::White), wall_width);
+					al_draw_filled_polygon(shadow, 4, ToAllegro(Colors::GetBlack(0.75f)));
+					al_draw_line(xp, yp - wall_width / 2, xp, yp + tile_width + wall_width / 2, ToAllegro(Colors::White), wall_width);
 				}
-				if (!adj.is_set(Direction::Up)) al_draw_line(xp - wall_width / 2, yp, xp + tile_size + wall_width / 2, yp, ToAllegro(Colors::White), wall_width);
-				if (!adj.is_set(Direction::Right)) al_draw_line(xp + tile_size, yp, xp + tile_size, yp + tile_size, ToAllegro(Colors::White), wall_width);
+				if (!adj.is_set(Direction::Up)) al_draw_line(xp - wall_width / 2, yp, xp + tile_width + wall_width / 2, yp, ToAllegro(Colors::White), wall_width);
+				if (!adj.is_set(Direction::Right)) al_draw_line(xp + tile_width, yp, xp + tile_width, yp + tile_width, ToAllegro(Colors::White), wall_width);
 				if (!adj.is_set(Direction::Down))
 				{
 					float shadow[] = {
-						xp, yp + tile_size,
-						xp - shadow_size, yp + tile_size + shadow_size,
-						(xp + tile_size) - shadow_size, yp + tile_size + shadow_size,
-						xp + tile_size, yp + tile_size,
+						xp, yp + tile_width,
+						xp - shadow_size, yp + tile_width + shadow_size,
+						xp + tile_width - shadow_size, yp + tile_width + shadow_size,
+						xp + tile_width, yp + tile_width,
 					};
-					al_draw_filled_polygon(shadow, 4, ToAllegro(Colors::Black));
-					al_draw_line(xp - wall_width / 2, yp + tile_size, xp + tile_size + wall_width / 2, yp + tile_size, ToAllegro(Colors::White), wall_width);
+					al_draw_filled_polygon((float const*)shadow, 4, ToAllegro(Colors::GetBlack(0.75f)));
+					al_draw_line(xp - wall_width / 2, yp + tile_width, xp + tile_width + wall_width / 2, yp + tile_width, ToAllegro(Colors::White), wall_width);
 				}
 			}
+		}
+
+		/// Mouse selection
+		if (mouse_tile)
+		{
+			auto select = map.RoomGrid.RectForTile(mouse_tile_pos, tile_size);
+			//al_draw_rectangle(select.p1.x, select.p1.y, select.p2.x, select.p2.y, ToAllegro(Colors::Red), 6);
+			al_draw_filled_rounded_rectangle(select.p1.x, select.p1.y, select.p2.x, select.p2.y, 4.0f, 4.0f, ToAllegro(Colors::GetWhite(0.5f)));
+			al_draw_rounded_rectangle(select.p1.x, select.p1.y, select.p2.x, select.p2.y, 4.0f, 4.0f, ToAllegro(Colors::Magenta), 4.0f);
 		}
 
 		al_flip_display();
@@ -217,4 +312,13 @@ int main()
 	al_uninstall_mouse();
 	al_uninstall_keyboard();
 	al_uninstall_system();
+}
+
+void TileObject::MoveTo(ivec2 pos)
+{
+	if (!mParentMap->RoomGrid.IsValid(pos)) return;
+
+	mParentMap->RoomGrid.At(mPosition)->Objects.erase(this);
+	mPosition = pos;
+	mParentMap->RoomGrid.At(mPosition)->Objects.insert(this);
 }
