@@ -7,6 +7,7 @@
 
 namespace gamelib::squares
 {
+	/// TODO: Maybe split this into two classes, one that uses per-tile Blocks, one that uses per-wall ones
 
 	struct NavigationTile
 	{
@@ -98,8 +99,10 @@ namespace gamelib::squares
 		template <typename IS_TRANSPARENT_FUNC, typename SET_VISIBLE_FUNC>
 		void CalculateFOV(ivec2 source, int max_radius, bool include_walls, IS_TRANSPARENT_FUNC&& is_transparent, SET_VISIBLE_FUNC&& set_visible);
 
+		/// Uses the `BlocksSight` flag to determine whether a tile blocks sight
 		void CalculateFOV(ivec2 source, int max_radius, bool include_walls);
 
+		/// Uses the `BlocksSight` flag to determine whether a tile blocks sight
 		bool CanSee(ivec2 start, ivec2 end, bool ignore_start) const;
 
 	private:
