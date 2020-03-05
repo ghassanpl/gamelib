@@ -301,7 +301,7 @@ namespace gamelib::squares
 	}
 
 	template<typename TILE_DATA>
-	void Grid<TILE_DATA>::Reset(size_t w, size_t h, TILE_DATA const& default_tile)
+	void Grid<TILE_DATA>::Reset(int w, int h, TILE_DATA const& default_tile)
 	{
 		mTiles.clear();
 		mWidth = w;
@@ -310,7 +310,7 @@ namespace gamelib::squares
 	}
 
 	template<typename TILE_DATA>
-	void Grid<TILE_DATA>::Reset(size_t w, size_t h)
+	void Grid<TILE_DATA>::Reset(int w, int h)
 	{
 		mTiles.clear();
 		mWidth = w;
@@ -350,21 +350,21 @@ namespace gamelib::squares
 	template<typename TILE_DATA>
 	void Grid<TILE_DATA>::FlipHorizontal()
 	{
-		for (size_t i = 0; i < mHeight; i++)
+		for (int i = 0; i < mHeight; i++)
 			std::reverse(GetRowStart(i), GetRowStart(i) + mWidth);
 	}
 
 	template<typename TILE_DATA>
 	void Grid<TILE_DATA>::FlipVertical()
 	{
-		for (size_t i = 0; i < mHeight / 2; i++)
+		for (int i = 0; i < mHeight / 2; i++)
 			std::swap_ranges(GetRowStart(i), GetRowStart(i) + mWidth, GetRowStart(mHeight - i - 1));
 	}
 
 	template<typename TILE_DATA>
 	void Grid<TILE_DATA>::Rotate180()
 	{
-		for (size_t i = 0; i < mHeight / 2; i++)
+		for (int i = 0; i < mHeight / 2; i++)
 			std::swap_ranges(std::make_reverse_iterator(GetRowStart(i) + mWidth), std::make_reverse_iterator(GetRowStart(i)), GetRowStart(mHeight - i - 1));
 
 		/// Need to reverse middle row if height is odd
@@ -373,7 +373,7 @@ namespace gamelib::squares
 	}
 
 	template<typename TILE_DATA>
-	void Grid<TILE_DATA>::ResizeY(size_t new_y, const TILE_DATA& new_element)
+	void Grid<TILE_DATA>::ResizeY(int new_y, const TILE_DATA& new_element)
 	{
 		if (new_y == 0) throw std::invalid_argument("new_y");
 
@@ -383,7 +383,7 @@ namespace gamelib::squares
 	}
 
 	template<typename TILE_DATA>
-	void Grid<TILE_DATA>::ResizeX(size_t new_x, const TILE_DATA& new_element)
+	void Grid<TILE_DATA>::ResizeX(int new_x, const TILE_DATA& new_element)
 	{
 		/// TODO: Would it be more cache-friendly to copy to a new vector and swap it with mTiles?
 		/*
@@ -410,7 +410,7 @@ namespace gamelib::squares
 		{
 			mTiles.resize(new_count, new_element);
 
-			for (size_t yy = 0; yy < mHeight; ++yy)
+			for (int yy = 0; yy < mHeight; ++yy)
 			{
 				auto y = mHeight - yy - 1;
 				const auto begin_range = y * mWidth;
@@ -422,7 +422,7 @@ namespace gamelib::squares
 		else
 		{
 			const auto dif = mWidth - new_x;
-			for (size_t y = 1; y < mHeight; ++y)
+			for (int y = 1; y < mHeight; ++y)
 			{
 				const auto begin_range = y * mWidth;
 				const auto end_range = begin_range + new_x;

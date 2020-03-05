@@ -122,9 +122,9 @@ namespace gamelib
 		CurrentState[key].Down = false;
 	}
 
-	ghassanpl::enum_flags<InputDeviceFlags> AllegroKeyboard::GetFlags() const
+	enum_flags<InputDeviceFlags> AllegroKeyboard::GetFlags() const
 	{
-		return ghassanpl::enum_flags<InputDeviceFlags>();
+		return enum_flags<InputDeviceFlags>();
 	}
 
 	/// TODO: Leds
@@ -245,9 +245,9 @@ namespace gamelib
 	{
 	}
 
-	ghassanpl::enum_flags<InputDeviceFlags> AllegroMouse::GetFlags() const
+	enum_flags<InputDeviceFlags> AllegroMouse::GetFlags() const
 	{
-		return ghassanpl::enum_flags<InputDeviceFlags>();
+		return enum_flags<InputDeviceFlags>();
 	}
 
 	bool AllegroMouse::IsStringPropertyValid(StringProperty property) const
@@ -458,9 +458,9 @@ namespace gamelib
 		return {};
 	}
 
-	ghassanpl::enum_flags<InputDeviceFlags> AllegroGamepad::GetFlags() const
+	enum_flags<InputDeviceFlags> AllegroGamepad::GetFlags() const
 	{
-		return ghassanpl::enum_flags<InputDeviceFlags>();
+		return enum_flags<InputDeviceFlags>();
 	}
 
 	bool AllegroGamepad::IsStringPropertyValid(StringProperty property) const

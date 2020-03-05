@@ -49,7 +49,7 @@ namespace gamelib
 		std::array<KeyState, (size_t)KeyboardKey::Max> LastFrameState;
 
 		// Inherited via IKeyboardDevice
-		virtual ghassanpl::enum_flags<InputDeviceFlags> GetFlags() const override;
+		virtual enum_flags<InputDeviceFlags> GetFlags() const override;
 		virtual bool IsStringPropertyValid(StringProperty property) const override;
 		virtual bool IsNumberPropertyValid(NumberProperty property) const override;
 	};
@@ -67,7 +67,7 @@ namespace gamelib
 		virtual void ForceRefresh() override;
 		virtual void NewFrame() override;
 		virtual bool IsConnected() const override;
-		virtual ghassanpl::enum_flags<InputDeviceFlags> GetFlags() const override;
+		virtual enum_flags<InputDeviceFlags> GetFlags() const override;
 		virtual bool IsStringPropertyValid(StringProperty property) const override;
 		virtual std::string_view GetStringProperty(StringProperty property) const override;
 		virtual bool IsNumberPropertyValid(NumberProperty property) const override;
@@ -116,7 +116,7 @@ namespace gamelib
 		virtual void ForceRefresh() override;
 		virtual void NewFrame() override;
 		virtual bool IsConnected() const override;
-		virtual ghassanpl::enum_flags<InputDeviceFlags> GetFlags() const override;
+		virtual enum_flags<InputDeviceFlags> GetFlags() const override;
 		virtual bool IsStringPropertyValid(StringProperty property) const override;
 		virtual std::string_view GetStringProperty(StringProperty property) const override;
 		virtual bool IsNumberPropertyValid(NumberProperty property) const override;

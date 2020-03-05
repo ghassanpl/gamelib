@@ -89,7 +89,7 @@ namespace gamelib
 	{
 		std::string Name;
 		std::string ShortName;
-		ghassanpl::enum_flags<InputFlags> Flags;
+		enum_flags<InputFlags> Flags;
 
 		double PressedThreshold = 0.5;
 
@@ -159,7 +159,7 @@ namespace gamelib
 		void SetLastActiveTime(seconds_t time) { mLastActiveTime = time; }
 
 		virtual std::string_view GetName() const;
-		virtual ghassanpl::enum_flags<InputDeviceFlags> GetFlags() const = 0;
+		virtual enum_flags<InputDeviceFlags> GetFlags() const = 0;
 
 		virtual DeviceInputID GetMaxInput() const = 0;
 		virtual bool IsValidInput(DeviceInputID input) const { return input < GetMaxInput(); }
@@ -204,7 +204,7 @@ namespace gamelib
 		};
 
 		virtual PowerSource GetPowerSource() const { return IInputDevice::PowerSource::Unknown; }
-		virtual ghassanpl::enum_flags<PowerSource> AvailablePowerSources() const { return ghassanpl::enum_flags<PowerSource>{}; }
+		virtual enum_flags<PowerSource> AvailablePowerSources() const { return enum_flags<PowerSource>{}; }
 
 		enum class StringProperty
 		{

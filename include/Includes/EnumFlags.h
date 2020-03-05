@@ -3,6 +3,8 @@
 #include <X:\Code\Native\enum_flags\include\enum_flags.h>
 #include <iosfwd>
 
+using ghassanpl::enum_flags;
+
 namespace ghassanpl
 {
 	template <typename E, typename B>

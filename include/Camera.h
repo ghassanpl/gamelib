@@ -30,7 +30,7 @@ namespace gamelib
 		ICamera(ALLEGRO_DISPLAY* display) noexcept;
 		ICamera(screen_bounds_t const& sbounds, world_bounds_t const& wbounds, radians_t rotation = radians_t{ 0.0f }) noexcept;
 
-		ghassanpl::enum_flags<DrawLayer> DrawLayers = ghassanpl::enum_flags<DrawLayer>::all();
+		enum_flags<DrawLayer> DrawLayers = enum_flags<DrawLayer>::all();
 
 		bool Enabled = true;
 

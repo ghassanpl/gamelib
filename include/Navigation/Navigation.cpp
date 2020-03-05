@@ -1,9 +1,10 @@
 #include "Navigation.h"
+#include "../Includes/Assuming.h"
 
 namespace gamelib::squares
 {
 
-	void NavigationGrid::ClearData(ghassanpl::enum_flags<NavigationTile::TileFlags> unset_flags)
+	void BlockNavigationGrid::ClearData(enum_flags<BlockNavigationTile::TileFlags> unset_flags)
 	{
 		for (auto& tile : mTiles)
 		{
@@ -13,43 +14,9 @@ namespace gamelib::squares
 		}
 	}
 
-	void NavigationGrid::BreakAdjacency(ivec2 pos, Direction dir, bool two_ways)
-	{
-		if (auto tile = At(pos))
-			tile->Adjacency.unset(dir);
-
-		if (!two_ways) return;
-		if (auto neighbor = At(pos + ToVector(dir)))
-			neighbor->Adjacency.unset(Opposite(dir));
-	}
-
-	void NavigationGrid::SetAdjacent(ivec2 pos, Direction dir, bool two_ways)
-	{
-		if (auto tile = At(pos))
-			tile->Adjacency.set(dir);
-		
-		if (!two_ways) return;
-		if (auto neighbor = At(pos + ToVector(dir)))
-			neighbor->Adjacency.set(Opposite(dir));
-	}
-
-	void NavigationGrid::BreakAdjacency(irec2 const& room)
-	{
-		for (auto x = room.p1.x; x < room.p2.x; x++)
-		{
-			BreakAdjacency({ x, room.p1.y }, Direction::Up, true);
-			BreakAdjacency({ x, room.p2.y - 1 }, Direction::Down, true);
-		}
-		for (auto y = room.p1.y; y < room.p2.y; y++)
-		{
-			BreakAdjacency({ room.p1.x, y }, Direction::Left, true);
-			BreakAdjacency({ room.p2.x - 1, y }, Direction::Right, true);
-		}
-	}
-
 	/*
 	/// TODO: Should we move this to Combos?
-	void NavigationGrid::InitFrom(TileLayer const* layer)
+	void BlockNavigationGrid::InitFrom(TileLayer const* layer)
 	{
 		AssumingNotNull(layer);
 		Reset(layer->Size());
@@ -61,114 +28,176 @@ namespace gamelib::squares
 	}
 	*/
 
-	std::vector<ivec2> NavigationGrid::BreadthFirstSearch(ivec2 start, ivec2 goal, bool diagonals)
+	std::vector<ivec2> BlockNavigationGrid::BreadthFirstSearch(ivec2 start, ivec2 goal, bool diagonals)
 	{
 		if (diagonals)
 		{
-			return BreadthFirstSearch<true>(start, goal, [&, goal](ivec2 from, ivec2 to) {
+			return BaseNavigationGrid<BlockNavigationTile>::BreadthFirstSearch<true>(start, goal, [&, goal](ivec2 from, ivec2 to) {
 				return (to == goal || !BlocksPassage(to)) && (!IsDiagonalNeighbor(from, to) || (!BlocksPassage({ from.x, to.y }) && BlocksPassage({ to.x, from.y })));
 			});
 		}
 		else
 		{
-			return BreadthFirstSearch<false>(start, goal, [&, goal](ivec2 from, ivec2 to) { return (to == goal || !BlocksPassage(to)); });
+			return BaseNavigationGrid<BlockNavigationTile>::BreadthFirstSearch<false>(start, goal, [&, goal](ivec2 from, ivec2 to) { return (to == goal || !BlocksPassage(to)); });
 		}
 	}
 
 	inline double len(ivec2 a, ivec2 b) noexcept { return (double)glm::length(vec2(a - b)); }
 
-	std::vector<ivec2> NavigationGrid::DijkstraSearch(ivec2 start, ivec2 goal, double max_cost, bool diagonals)
+	std::vector<ivec2> BlockNavigationGrid::DijkstraSearch(ivec2 start, ivec2 goal, double max_cost, bool diagonals)
 	{
 		if (diagonals)
 		{
-			return DijkstraSearch<true>(start, goal, [&, goal](ivec2 from, ivec2 to) {
+			return BaseNavigationGrid<BlockNavigationTile>::DijkstraSearch<true>(start, goal, [&, goal](ivec2 from, ivec2 to) {
 				return (to == goal || !BlocksPassage(to)) && (!IsDiagonalNeighbor(from, to) || (!BlocksPassage({ from.x, to.y }) && BlocksPassage({ to.x, from.y })));
 			}, max_cost, len);
 		}
 		else
 		{
-			return DijkstraSearch<false>(start, goal, [&, goal](ivec2 from, ivec2 to) {
+			return BaseNavigationGrid<BlockNavigationTile>::DijkstraSearch<false>(start, goal, [&, goal](ivec2 from, ivec2 to) {
 				return (to == goal || !BlocksPassage(to));
 			}, max_cost, len);
 		}
 	}
 
-	std::vector<ivec2> NavigationGrid::AStarSearch(ivec2 start, ivec2 goal, bool diagonals)
+	std::vector<ivec2> BlockNavigationGrid::AStarSearch(ivec2 start, ivec2 goal, bool diagonals)
 	{
 		if (diagonals)
 		{
-			return AStarSearch<true>(start, goal, [&, goal](ivec2 from, ivec2 to) {
+			return BaseNavigationGrid<BlockNavigationTile>::AStarSearch<true>(start, goal, [&, goal](ivec2 from, ivec2 to) {
 				return (to == goal || !BlocksPassage(to)) && (!IsDiagonalNeighbor(from, to) || (!BlocksPassage({ from.x, to.y }) && BlocksPassage({ to.x, from.y })));
 			}, len, len);
 		}
 		else
 		{
-			return AStarSearch<false>(start, goal, [&, goal](ivec2 from, ivec2 to) {
+			return BaseNavigationGrid<BlockNavigationTile>::AStarSearch<false>(start, goal, [&, goal](ivec2 from, ivec2 to) {
 				return (to == goal || !BlocksPassage(to));
 			}, len, len);
 		}
 	}
 
-	void NavigationGrid::CalculateFOV(ivec2 source, int max_radius, bool include_walls)
+	void BlockNavigationGrid::CalculateFOV(ivec2 source, int max_radius, bool include_walls)
 	{
-		CalculateFOV(source, max_radius, include_walls, 
+		ClearData(BlockNavigationTile::TileFlags::Visible);
+
+		this->CalculateFOV(source, max_radius, include_walls,
 			[this](ivec2 pos) {
 				return !BlocksSight(pos);
 			},
 			[this](ivec2 pos) {
-				At(pos)->Flags.set(NavigationTile::TileFlags::Visible, NavigationTile::TileFlags::WasSeen);
+				At(pos)->Flags.set(BlockNavigationTile::TileFlags::Visible, BlockNavigationTile::TileFlags::WasSeen);
 			}
 		);
 	}
 
-	std::vector<ivec2> NavigationGrid::ReconstructPath(ivec2 start, ivec2 goal) const
-	{
-		if (start == goal) return { start };
-
-		std::vector<ivec2> path;
-
-		/// We do path simplification here already
-		auto last_dif = ivec2{ 0,0 };
-		auto last_pos = goal;
-		auto current = Predecessor(goal);
-		while (current != start)
-		{
-			if (!IsValid(current))
-				return path;
-			auto dif = current - last_pos;
-			if (dif != last_dif)
-			{
-				last_dif = dif;
-				path.push_back(last_pos);
-			}
-			last_pos = current;
-			current = Predecessor(current);
-		}
-		path.push_back(last_pos);
-		path.push_back(current);
-
-		return path;
-	}
-
-	static const auto comparer = [](const auto& p1, const auto& p2) { return p1.first > p2.first; };
-
-	void NavigationGrid::PutSearchFrontierItem(ivec2 item, double priority)
-	{
-		mSearchFrontier.emplace_back(priority, item);
-		std::push_heap(mSearchFrontier.begin(), mSearchFrontier.end(), comparer);
-	}
-
-	ivec2 NavigationGrid::GetSearchFrontierItem()
-	{
-		ivec2 best_item = mSearchFrontier.front().second;
-		std::pop_heap(mSearchFrontier.begin(), mSearchFrontier.end(), comparer);
-		mSearchFrontier.pop_back();
-		return best_item;
-	}
-
-	bool NavigationGrid::CanSee(ivec2 start, ivec2 end, bool ignore_start) const
+	bool BlockNavigationGrid::CanSee(ivec2 start, ivec2 end, bool ignore_start) const
 	{
 		return LineCast(start, end, [this](ivec2 pos) { return BlocksSight(pos); }, ignore_start);
+	}
+
+	void WallNavigationGrid::ClearData(enum_flags<WallNavigationTile::TileFlags> unset_flags)
+	{
+		for (auto& tile : mTiles)
+		{
+			tile.Cost = std::numeric_limits<double>::quiet_NaN();
+			tile.Flags.bits = tile.Flags.bits & ~unset_flags.bits;
+			tile.Predecessor = { -1, -1 };
+			tile.Blocks = {};
+		}
+	}
+
+	bool WallNavigationGrid::Blocks(ivec2 from, Direction dir, WallBlocks what) const
+	{
+		return At(from)->Blocks[(int)what].is_set(dir);
+	}
+
+	bool WallNavigationGrid::Blocks(ivec2 from, ivec2 to, WallBlocks what) const
+	{
+		Assuming(IsSurrounding(from, to));
+		if (from == to) return false;
+		return At(from)->Blocks[(int)what].is_set(ToDirection(to - from));
+	}
+
+	void WallNavigationGrid::SetBlocking(ivec2 from, Direction dir, enum_flags<WallBlocks> what)
+	{
+		if (auto from_tile = At(from))
+		{
+			auto& adj = from_tile->Blocks;
+			what.for_each([&adj, dir](WallBlocks blocks) {
+				adj[(int)blocks].set(dir);
+			});
+		}
+	}
+
+	void WallNavigationGrid::SetBlocking(ivec2 from, ivec2 to, enum_flags<WallBlocks> what, bool two_ways)
+	{
+		Assuming(IsSurrounding(from, to));
+		if (from == to) return;
+		const auto dir = ToDirection(to - from);
+		SetBlocking(from, dir, what);
+		if (two_ways)
+			SetBlocking(to, Opposite(dir), what);
+	}
+
+	void WallNavigationGrid::SetBlocking(irec2 const& room, enum_flags<WallBlocks> what, bool two_ways)
+	{
+		for (auto x = room.p1.x; x < room.p2.x; x++)
+		{
+			SetBlocking(ivec2{ x, room.p1.y }, Direction::Up, what);
+			SetBlocking(ivec2{ x, room.p1.y - 1 }, Direction::Down, what);
+
+			SetBlocking(ivec2{ x, room.p2.y - 1 }, Direction::Down, what);
+			SetBlocking(ivec2{ x, room.p2.y }, Direction::Up, what);
+		}
+		for (auto y = room.p1.y; y < room.p2.y; y++)
+		{
+			SetBlocking(ivec2{ room.p1.x, y }, Direction::Left, what);
+			SetBlocking(ivec2{ room.p1.x - 1, y }, Direction::Right, what);
+
+			SetBlocking(ivec2{ room.p2.x - 1, y }, Direction::Right, what);
+			SetBlocking(ivec2{ room.p2.x, y }, Direction::Left, what);
+		}
+	}
+
+	void WallNavigationGrid::SetNonBlocking(ivec2 from, Direction dir, enum_flags<WallBlocks> what)
+	{
+		if (auto from_tile = At(from))
+		{
+			auto& adj = from_tile->Blocks;
+			what.for_each([&adj, dir](WallBlocks blocks) {
+				adj[(int)blocks].unset(dir);
+			});
+		}
+	}
+
+	void WallNavigationGrid::SetNonBlocking(ivec2 from, ivec2 to, enum_flags<WallBlocks> what, bool two_ways)
+	{
+		Assuming(IsSurrounding(from, to));
+		if (from == to) return;
+		const auto dir = ToDirection(to - from);
+		SetNonBlocking(from, dir, what);
+		if (two_ways)
+			SetNonBlocking(to, Opposite(dir), what);
+	}
+
+	void WallNavigationGrid::SetNonBlocking(irec2 const& room, enum_flags<WallBlocks> what, bool two_ways)
+	{
+		for (auto x = room.p1.x; x < room.p2.x; x++)
+		{
+			SetNonBlocking(ivec2{ x, room.p1.y }, Direction::Up, what);
+			SetNonBlocking(ivec2{ x, room.p1.y - 1 }, Direction::Down, what);
+
+			SetNonBlocking(ivec2{ x, room.p2.y - 1 }, Direction::Down, what);
+			SetNonBlocking(ivec2{ x, room.p2.y }, Direction::Up, what);
+		}
+		for (auto y = room.p1.y; y < room.p2.y; y++)
+		{
+			SetNonBlocking(ivec2{ room.p1.x, y }, Direction::Left, what);
+			SetNonBlocking(ivec2{ room.p1.x - 1, y }, Direction::Right, what);
+
+			SetNonBlocking(ivec2{ room.p2.x - 1, y }, Direction::Right, what);
+			SetNonBlocking(ivec2{ room.p2.x, y }, Direction::Left, what);
+		}
 	}
 
 }

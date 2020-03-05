@@ -12,19 +12,19 @@ namespace gamelib::squares
 	struct Grid
 	{
 		Grid() = default;
-		Grid(size_t w, size_t h, TILE_DATA const& default_tile) { Reset(w, h, default_tile); }
-		Grid(uvec2 size, TILE_DATA const& default_tile) : Grid(size.x, size.y, default_tile) {}
-		Grid(size_t w, size_t h) { Reset(w, h); }
-		Grid(uvec2 size) : Grid(size.x, size.y) {}
+		Grid(int w, int h, TILE_DATA const& default_tile) { Reset(w, h, default_tile); }
+		Grid(ivec2 size, TILE_DATA const& default_tile) : Grid(size.x, size.y, default_tile) {}
+		Grid(int w, int h) { Reset(w, h); }
+		Grid(ivec2 size) : Grid(size.x, size.y) {}
 
-		void Reset(size_t w, size_t h, TILE_DATA const& default_tile);
-		void Reset(size_t w, size_t h);
-		void Reset(uvec2 size) { Reset(size.x, size.y); }
+		void Reset(int w, int h, TILE_DATA const& default_tile);
+		void Reset(int w, int h);
+		void Reset(ivec2 size) { Reset(size.x, size.y); }
 
 		/// Accessors & Queries
 
-		TILE_DATA& operator[](size_t i) { return mTiles[i]; }
-		TILE_DATA const& operator[](size_t i) const { return mTiles[i]; }
+		TILE_DATA& operator[](int i) { return mTiles[i]; }
+		TILE_DATA const& operator[](int i) const { return mTiles[i]; }
 
 		/// https://github.com/nothings/stb/blob/master/stb_connected_components.h
 		/// Need to determine whether tile is passable or not (maybe enum_flags::is_set(Definition->Flags, TileFlag::IsPassable) ?)
@@ -64,7 +64,7 @@ namespace gamelib::squares
 		template <typename FUNC>
 		bool LineCast(ivec2 start, ivec2 end, FUNC&& blocks_func, bool ignore_start) const;
 
-		bool IsValid(int x, int y) const noexcept { return x >= 0 && y >= 0 && (size_t)x < mWidth && (size_t)y < mHeight; }
+		bool IsValid(int x, int y) const noexcept { return x >= 0 && y >= 0 && x < mWidth && y < mHeight; }
 		bool IsValid(vec2 world_pos, vec2 tile_size) const noexcept { return IsValid(WorldPositionToTilePosition(world_pos, tile_size)); }
 		bool IsValid(ivec2 pos) const noexcept { return IsValid(pos.x, pos.y); }
 		bool IsIndexValid(int index) const noexcept { return index >= 0 && index < (int)mTiles.size(); }
@@ -81,9 +81,9 @@ namespace gamelib::squares
 		TILE_DATA& SafeAt(ivec2 pos, TILE_DATA const& outside) noexcept { if (auto at = At(pos)) return at->Data; return outside; }
 		TILE_DATA& SafeAt(int x, int y, TILE_DATA const& outside) noexcept { return At(ivec2{ x, y }); }
 
-		size_t Width() const noexcept { return mWidth; }
-		size_t Height() const noexcept { return mHeight; }
-		uvec2 Size() const noexcept { return { unsigned(mWidth), unsigned(mHeight) }; }
+		int Width() const noexcept { return mWidth; }
+		int Height() const noexcept { return mHeight; }
+		ivec2 Size() const noexcept { return { mWidth, mHeight }; }
 		gsl::span<TILE_DATA const> Tiles() const { return mTiles; }
 
 		vec2 TilePositionToWorldPosition(ivec2 tile_pos, vec2 tile_size) const { return vec2(tile_pos) * tile_size; }
@@ -106,15 +106,15 @@ namespace gamelib::squares
 
 	protected:
 
-		auto GetRowStart(size_t row) { return mTiles.begin() + row * mWidth; }
+		auto GetRowStart(int row) { return mTiles.begin() + row * mWidth; }
 		auto GetTileIterator(int x, int y) { return mTiles.begin() + y * mWidth + x; }
 
-		void ResizeY(size_t new_y, const TILE_DATA& new_element);
+		void ResizeY(int new_y, const TILE_DATA& new_element);
 
-		void ResizeX(size_t new_x, const TILE_DATA& new_element);
+		void ResizeX(int new_x, const TILE_DATA& new_element);
 
-		size_t mWidth = 0;
-		size_t mHeight = 0;
+		int mWidth = 0;
+		int mHeight = 0;
 		std::vector<TILE_DATA> mTiles;
 	};
 

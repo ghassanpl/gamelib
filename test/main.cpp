@@ -63,7 +63,7 @@ struct RoomTile
 struct Map
 {
 	Grid<RoomTile> RoomGrid;
-	NavigationGrid NavGrid;
+	WallNavigationGrid NavGrid;
 	std::vector<std::unique_ptr<TileObject>> Objects;
 
 	template <typename T, typename... ARGS>
@@ -80,7 +80,7 @@ struct Map
 
 	void BuildRoom(irec2 const& room, ALLEGRO_BITMAP* bg)
 	{
-		NavGrid.BreakAdjacency(room);
+		NavGrid.SetBlocking(room, WallBlocks::Passage);
 		RoomGrid.ForEachInRect(room, [this, bg](ivec2 pos) {
 			auto tile = RoomGrid.At(pos);
 			tile->Bg = bg;
@@ -91,7 +91,9 @@ struct Map
 	{
 		RoomGrid.Reset(26, 19);
 		NavGrid.Reset(26, 19);
-		NavGrid.BuildAdjacency<ghassanpl::flag_bits(NavigationGrid::IterationFlags::OnlyValid)>();
+		NavGrid.BuildWalls<ghassanpl::flag_bits(BlockNavigationGrid::IterationFlags::OnlyValid)>([&](ivec2 from, ivec2 to) {
+			return NavGrid.IsValid(to) ? enum_flags<WallBlocks>{} : enum_flags<WallBlocks>::all(WallBlocks::Count);
+		});
 	}
 };
 
@@ -210,11 +212,11 @@ int main()
 		if (move_dir != Direction::None)
 		{
 			const auto target_pos = player->Position() + ToVector(move_dir);
-			if (map.NavGrid.Adjacent(player->Position(), target_pos))
+			if (map.NavGrid.Passable(player->Position(), target_pos))
 			{
 				player->MoveTo(target_pos);
 				camera.SetWorldCenter(map.RoomGrid.TilePositionToWorldPosition(player->Position(), tile_size) + tile_size / 2.0f);
-				map.NavGrid.CalculateFOV(target_pos, 26, false);
+				//map.NavGrid.CalculateFOV(target_pos, 26, false, );
 			}
 		}
 
@@ -231,10 +233,10 @@ int main()
 
 		/// Floors
 		constexpr float half_tile_size = tile_width / 2;
-		for (size_t y = 0; y < map.RoomGrid.Height(); y++)
+		for (int y = 0; y < map.RoomGrid.Height(); y++)
 		{
 			auto yp = y * tile_width;
-			for (size_t x = 0; x < map.RoomGrid.Width(); x++)
+			for (int x = 0; x < map.RoomGrid.Width(); x++)
 			{
 				auto xp = x * tile_width;
 				auto tile = map.RoomGrid.At(x, y);
@@ -243,10 +245,10 @@ int main()
 		}
 
 		/// Objects
-		for (size_t y = 0; y < map.RoomGrid.Height(); y++)
+		for (int y = 0; y < map.RoomGrid.Height(); y++)
 		{
 			auto yp = y * tile_width;
-			for (size_t x = 0; x < map.RoomGrid.Width(); x++)
+			for (int x = 0; x < map.RoomGrid.Width(); x++)
 			{
 				auto xp = x * tile_width;
 				auto tile = map.RoomGrid.At(x, y);
@@ -260,14 +262,14 @@ int main()
 		/// Walls
 		constexpr auto wall_width = 10;
 		constexpr auto shadow_size = 20;
-		for (size_t y = 0; y < map.RoomGrid.Height(); y++)
+		for (int y = 0; y < map.RoomGrid.Height(); y++)
 		{
 			auto yp = y * tile_width;
-			for (size_t x = 0; x < map.RoomGrid.Width(); x++)
+			for (int x = 0; x < map.RoomGrid.Width(); x++)
 			{
 				auto xp = x * tile_width;
-				auto adj = map.NavGrid.At(x, y)->Adjacency;
-				if (!adj.is_set(Direction::Left))
+				auto adj = map.NavGrid.At(x, y)->Blocks[(int)WallBlocks::Passage];
+				if (adj.is_set(Direction::Left))
 				{
 					float shadow[] = {
 						xp, yp + tile_width,
@@ -278,9 +280,9 @@ int main()
 					al_draw_filled_polygon(shadow, 4, ToAllegro(Colors::GetBlack(0.75f)));
 					al_draw_line(xp, yp - wall_width / 2, xp, yp + tile_width + wall_width / 2, ToAllegro(Colors::White), wall_width);
 				}
-				if (!adj.is_set(Direction::Up)) al_draw_line(xp - wall_width / 2, yp, xp + tile_width + wall_width / 2, yp, ToAllegro(Colors::White), wall_width);
-				if (!adj.is_set(Direction::Right)) al_draw_line(xp + tile_width, yp, xp + tile_width, yp + tile_width, ToAllegro(Colors::White), wall_width);
-				if (!adj.is_set(Direction::Down))
+				if (adj.is_set(Direction::Up)) al_draw_line(xp - wall_width / 2, yp, xp + tile_width + wall_width / 2, yp, ToAllegro(Colors::White), wall_width);
+				if (adj.is_set(Direction::Right)) al_draw_line(xp + tile_width, yp, xp + tile_width, yp + tile_width, ToAllegro(Colors::White), wall_width);
+				if (adj.is_set(Direction::Down))
 				{
 					float shadow[] = {
 						xp, yp + tile_width,

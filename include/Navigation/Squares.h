@@ -35,7 +35,7 @@ namespace gamelib::squares
 		NorthEast
 	};
 
-	using DirectionBitmap = ghassanpl::enum_flags<Direction, uint8_t>;
+	using DirectionBitmap = enum_flags<Direction, uint8_t>;
 
 	inline constexpr Direction operator+(Direction dir, int d) { return (Direction)((int(dir) + d) % 8); }
 	inline constexpr Direction operator-(Direction dir, int d) { return (Direction)((int(dir) + (8 + (d % 8))) % 8); }
