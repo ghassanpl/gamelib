@@ -1,3 +1,4 @@
+#include <iostream>
 #include "Navigation.h"
 #include "../Includes/Assuming.h"
 
@@ -108,24 +109,35 @@ namespace gamelib::squares
 
 	bool WallNavigationGrid::Blocks(ivec2 from, Direction dir, WallBlocks what) const
 	{
-		return At(from)->Blocks[(int)what].is_set(dir);
+		return At(from)->Blocks[(int)dir].is_set(what);
 	}
 
 	bool WallNavigationGrid::Blocks(ivec2 from, ivec2 to, WallBlocks what) const
 	{
 		Assuming(IsSurrounding(from, to));
 		if (from == to) return false;
-		return At(from)->Blocks[(int)what].is_set(ToDirection(to - from));
+		return At(from)->Blocks[(int)ToDirection(to - from)].is_set(what);
+	}
+
+	enum_flags<WallBlocks>& WallNavigationGrid::BlocksIn(ivec2 from, ivec2 to)
+	{
+		Assuming(IsSurrounding(from, to));
+		AssumingNotEqual(from, to);
+		return At(from)->Blocks[(int)ToDirection(to - from)];
+	}
+
+	enum_flags<WallBlocks> const& WallNavigationGrid::BlocksIn(ivec2 from, ivec2 to) const
+	{
+		Assuming(IsSurrounding(from, to));
+		AssumingNotEqual(from, to);
+		return At(from)->Blocks[(int)ToDirection(to - from)];
 	}
 
 	void WallNavigationGrid::SetBlocking(ivec2 from, Direction dir, enum_flags<WallBlocks> what)
 	{
 		if (auto from_tile = At(from))
 		{
-			auto& adj = from_tile->Blocks;
-			what.for_each([&adj, dir](WallBlocks blocks) {
-				adj[(int)blocks].set(dir);
-			});
+			from_tile->Blocks[(int)dir].set(what);
 		}
 	}
 
@@ -200,4 +212,65 @@ namespace gamelib::squares
 		}
 	}
 
+	WallNavigationGrid::RaycastResult WallNavigationGrid::RayCast(vec2 tile_size, vec2 start, vec2 direction, WallBlocks blocking, double max_distance)
+	{
+		auto tile = WorldPositionToTilePosition(start, tile_size);
+		auto old_tile = tile;
+		auto b = glm::lessThanEqual(direction, {});
+		auto dTile = glm::mix(ivec2{ 1, 1 }, ivec2{ -1, -1 }, b);
+		auto dt = (vec2(glm::mix(tile + ivec2{ 1, 1 }, tile, b)) * tile_size - start) / direction;
+		auto ddt = (vec2{ dTile } * tile_size) / direction;
+		double t = 0;
+		if (glm::dot(direction, direction) > 0)
+		{
+			while (t < max_distance && IsValid(tile))
+			{
+				/// VISITED(tile)
+				/// MARK(start + direction * t)
+
+				old_tile = tile;
+
+				if (dt.x < dt.y)
+				{
+					tile.x += dTile.x;
+					auto d = dt.x;
+					t += d;
+					dt.x += ddt.x - d;
+					dt.y -= d;
+				}
+				else
+				{
+					tile.y += dTile.y;
+					auto d = dt.y;
+					t += d;
+					dt.x -= d;
+					dt.y += ddt.y - d;
+				}
+
+				if (t <= max_distance && Blocks(old_tile, tile, blocking))
+				{
+					return RaycastResult{
+						.Distance = t,
+						.Tile = old_tile,
+						.Neighbor = tile,
+						.HitPosition = start + direction * (float)t,
+						.Wall = ToDirection(tile - old_tile),
+						.Blocking = blocking,
+						.Hit = true,
+					};
+				}
+			}
+
+			return RaycastResult{
+				.Distance = max_distance,
+				.Tile = old_tile,
+				.Neighbor = tile,
+				.HitPosition = start + direction * (float)max_distance,
+				.Wall = ToDirection(tile - old_tile),
+				.Hit = false,
+			};
+		}
+
+		return {};
+	}
 }

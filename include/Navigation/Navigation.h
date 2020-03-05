@@ -117,9 +117,7 @@ namespace gamelib::squares
 	enum WallBlocks
 	{
 		Passage,
-		Sight,
-
-		Count
+		Sight
 	};
 
 	struct WallNavigationTile : BaseNavigationTile
@@ -135,7 +133,16 @@ namespace gamelib::squares
 
 		enum_flags<TileFlags> Flags;
 
-		std::array<DirectionBitmap, (size_t)WallBlocks::Count> Blocks{};
+		std::array<enum_flags<WallBlocks>, 8> Blocks{};
+		DirectionBitmap BlocksWall(WallBlocks blocks) const
+		{
+			DirectionBitmap result{};
+			AllDirections.for_each([&] (Direction dir) {
+				if (Blocks[(int)dir].is_set(blocks))
+					result.set(dir);
+			});
+			return result;
+		}
 	};
 
 	struct WallNavigationGrid : BaseNavigationGrid<WallNavigationTile>
@@ -153,6 +160,12 @@ namespace gamelib::squares
 		bool Blocks(ivec2 from, Direction dir, WallBlocks what) const;
 		bool Blocks(ivec2 from, ivec2 to, WallBlocks what) const;
 
+		enum_flags<WallBlocks>& BlocksIn(ivec2 from, Direction dir) { return At(from)->Blocks[(int)dir]; }
+		enum_flags<WallBlocks> const& BlocksIn(ivec2 from, Direction dir) const { return At(from)->Blocks[(int)dir]; }
+
+		enum_flags<WallBlocks>& BlocksIn(ivec2 from, ivec2 to);
+		enum_flags<WallBlocks> const& BlocksIn(ivec2 from, ivec2 to) const;
+
 		void SetBlocking(ivec2 from, Direction dir, enum_flags<WallBlocks> what);
 		void SetBlocking(ivec2 from, ivec2 to, enum_flags<WallBlocks> what, bool two_ways = true);
 		void SetBlocking(irec2 const& room, enum_flags<WallBlocks> what, bool two_ways = true);
@@ -163,6 +176,20 @@ namespace gamelib::squares
 
 		bool Visible(ivec2 from, ivec2 to) const { return !Blocks(from, to, WallBlocks::Sight); }
 		bool Passable(ivec2 from, ivec2 to) const { return !Blocks(from, to, WallBlocks::Passage); }
+
+		struct RaycastResult
+		{
+			double Distance = 0;
+			ivec2 Tile{ -1, -1 };
+			ivec2 Neighbor{ -1, -1 };
+			vec2 HitPosition{ 0,0 };
+			Direction Wall = Direction::None;
+			enum_flags<WallBlocks> Blocking{};
+			bool Hit = false;
+		};
+
+		RaycastResult RayCast(vec2 tile_size, vec2 start, vec2 direction, WallBlocks blocking, double max_distance = std::numeric_limits<double>::max());
+		RaycastResult SegmentCast(vec2 tile_size, vec2 start, vec2 end, WallBlocks blocking);
 	};
 }
 

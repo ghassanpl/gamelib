@@ -4,6 +4,11 @@
 namespace gamelib::squares
 {
 	/// TODO: http://squidpony.github.io/SquidLib/squidlib/apidocs/squidpony/squidgrid/gui/gdx/LightingHandler.html
+	
+	inline WallNavigationGrid::RaycastResult WallNavigationGrid::SegmentCast(vec2 tile_size, vec2 start, vec2 end, WallBlocks blocking)
+	{
+		return RayCast(tile_size, start, glm::normalize(end - start), blocking, glm::length(end - start));
+	}
 
 	template <uint64_t FLAGS, typename WALL_FUNCTION>
 	inline void WallNavigationGrid::BuildWalls(WALL_FUNCTION&& wall_func)
@@ -11,6 +16,7 @@ namespace gamelib::squares
 		static constexpr auto ONLY_VALID = ghassanpl::is_flag_set(FLAGS, IterationFlags::OnlyValid);
 		static constexpr auto dirs = ghassanpl::is_flag_set(FLAGS, IterationFlags::Diagonals) ? AllDirections : AllCardinalDirections;
 
+		/*
 		this->ForEach<FLAGS>([this, &wall_func](ivec2 pos) {
 			auto& adj = At(pos)->Blocks = {};
 			dirs.for_each([this, &adj, pos, &wall_func](Direction dir) {
@@ -20,6 +26,13 @@ namespace gamelib::squares
 				wall_blocks.for_each([&adj, dir](WallBlocks blocks) {
 					adj[(int)blocks].set(dir);
 				});
+			});
+		});
+		*/
+		this->ForEach<FLAGS>([this, &wall_func](ivec2 pos) {
+			auto& adj = At(pos)->Blocks = {};
+			dirs.for_each([this, &adj, pos, &wall_func](Direction dir) {
+				adj[(int)dir] = wall_func(pos, pos + ToVector(dir));
 			});
 		});
 	}

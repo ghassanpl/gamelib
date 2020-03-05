@@ -92,7 +92,7 @@ struct Map
 		RoomGrid.Reset(26, 19);
 		NavGrid.Reset(26, 19);
 		NavGrid.BuildWalls<ghassanpl::flag_bits(BlockNavigationGrid::IterationFlags::OnlyValid)>([&](ivec2 from, ivec2 to) {
-			return NavGrid.IsValid(to) ? enum_flags<WallBlocks>{} : enum_flags<WallBlocks>::all(WallBlocks::Count);
+			return NavGrid.IsValid(to) ? enum_flags<WallBlocks>{} : enum_flags<WallBlocks>::all(WallBlocks::Sight);
 		});
 	}
 };
@@ -220,8 +220,13 @@ int main()
 			}
 		}
 
-		auto mouse_tile_pos = map.RoomGrid.WorldPositionToTilePosition(camera.ScreenSpaceToWorldSpace(input.GetMousePosition()), tile_size);
+		auto mouse_world_pos = camera.ScreenSpaceToWorldSpace(input.GetMousePosition());
+		auto mouse_tile_pos = map.RoomGrid.WorldPositionToTilePosition(mouse_world_pos, tile_size);
 		auto mouse_tile = map.RoomGrid.At(mouse_tile_pos);
+
+		auto player_center = vec2{ player->Position() } * tile_size + tile_size / 2.0f;
+
+		auto raycast_result = map.NavGrid.SegmentCast(tile_size, player_center, mouse_world_pos, WallBlocks::Passage);
 
 		/// //////////////////////////// ///
 		/// Draw
@@ -268,7 +273,7 @@ int main()
 			for (int x = 0; x < map.RoomGrid.Width(); x++)
 			{
 				auto xp = x * tile_width;
-				auto adj = map.NavGrid.At(x, y)->Blocks[(int)WallBlocks::Passage];
+				auto adj = map.NavGrid.At(x, y)->BlocksWall(WallBlocks::Passage);
 				if (adj.is_set(Direction::Left))
 				{
 					float shadow[] = {
@@ -303,6 +308,12 @@ int main()
 			//al_draw_rectangle(select.p1.x, select.p1.y, select.p2.x, select.p2.y, ToAllegro(Colors::Red), 6);
 			al_draw_filled_rounded_rectangle(select.p1.x, select.p1.y, select.p2.x, select.p2.y, 4.0f, 4.0f, ToAllegro(Colors::GetWhite(0.5f)));
 			al_draw_rounded_rectangle(select.p1.x, select.p1.y, select.p2.x, select.p2.y, 4.0f, 4.0f, ToAllegro(Colors::Magenta), 4.0f);
+		}
+
+		al_draw_line(player_center.x, player_center.y, mouse_world_pos.x, mouse_world_pos.y, ToAllegro(Colors::White), 0);
+		if (raycast_result.Hit)
+		{
+			al_draw_line(player_center.x, player_center.y, raycast_result.HitPosition.x, raycast_result.HitPosition.y, ToAllegro(Colors::Red), 0);
 		}
 
 		al_flip_display();
