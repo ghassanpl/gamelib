@@ -13,6 +13,8 @@ namespace gamelib
 	using InputID = int;
 	inline constexpr InputID InvalidInput = 0x5F5F5F5F;
 
+	struct IDebugger;
+
 	struct IInputSystem
 	{
 		IErrorReporter& ErrorReporter;
@@ -23,6 +25,8 @@ namespace gamelib
 		virtual void Init();
 
 		virtual void Update();
+
+		virtual void Debug(IDebugger& debugger);
 
 		using InputDeviceIndex = size_t;
 

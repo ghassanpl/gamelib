@@ -164,6 +164,8 @@
     <ClInclude Include="include\Combos\GLM+JSON.h" />
     <ClInclude Include="include\Common.h" />
     <ClInclude Include="include\Debugger.h" />
+    <ClInclude Include="include\Debug\AllegroImGuiDebugger.h" />
+    <ClInclude Include="include\Debug\ImGuiUtils.h" />
     <ClInclude Include="include\ErrorReporter.h" />
     <ClInclude Include="include\Includes\Allegro.h" />
     <ClInclude Include="include\Includes\Assuming.h" />
@@ -188,6 +190,8 @@
     <ClInclude Include="include\Transformable.h" />
     <ClInclude Include="include\Utils\PanZoomer.h" />
     <ClInclude Include="IResource.h" />
+    <ClInclude Include="lib\imgui-allegro\imgui-Allegro.h" />
+    <ClInclude Include="lib\imgui-allegro\imgui_impl_allegro5.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="include\Camera.cpp" />
@@ -196,6 +200,10 @@
     <ClCompile Include="include\Input\InputSystem.cpp" />
     <ClCompile Include="include\Navigation\Navigation.cpp" />
     <ClCompile Include="include\Transformable.cpp" />
+    <ClCompile Include="lib\imgui-allegro\imgui-Allegro.cpp" />
+    <ClCompile Include="lib\imgui-allegro\imgui_impl_allegro5.cpp" />
+    <ClCompile Include="src\AllegroImGuiDebugger.cpp" />
+    <ClCompile Include="src\Debug\Debugger.cpp" />
     <ClCompile Include="src\ErrorReporter.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

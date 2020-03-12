@@ -48,6 +48,7 @@ inline rec2 TransformRectBB(ALLEGRO_TRANSFORM const& transform, rec2 rectangle)
 }
 
 static_assert(sizeof(Color) == sizeof(ALLEGRO_COLOR));
-inline ALLEGRO_COLOR ToAllegro(Color c) { return *(ALLEGRO_COLOR*)(&c); }
+inline ALLEGRO_COLOR const& ToAllegro(Color const &c) { return *(ALLEGRO_COLOR*)(&c); }
+inline ALLEGRO_COLOR ToAllegro(Color&& c) { return *(ALLEGRO_COLOR*)(&c); }
 
 #define GAMELIB_ALLEGRO

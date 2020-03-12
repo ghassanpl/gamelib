@@ -133,93 +133,52 @@ namespace gamelib::squares
 		return At(from)->Blocks[(int)ToDirection(to - from)];
 	}
 
-	void WallNavigationGrid::SetBlocking(ivec2 from, Direction dir, enum_flags<WallBlocks> what)
+	void WallNavigationGrid::SetBlocking(ivec2 from, Direction dir, enum_flags<WallBlocks> what, bool blocking)
 	{
 		if (auto from_tile = At(from))
 		{
-			from_tile->Blocks[(int)dir].set(what);
+			from_tile->Blocks[(int)dir].set_to(blocking, what);
 		}
 	}
 
-	void WallNavigationGrid::SetBlocking(ivec2 from, ivec2 to, enum_flags<WallBlocks> what, bool two_ways)
+	void WallNavigationGrid::SetBlocking(ivec2 from, ivec2 to, enum_flags<WallBlocks> what, bool blocking, bool two_ways)
 	{
 		Assuming(IsSurrounding(from, to));
 		if (from == to) return;
 		const auto dir = ToDirection(to - from);
-		SetBlocking(from, dir, what);
+		SetBlocking(from, dir, what, blocking);
 		if (two_ways)
-			SetBlocking(to, Opposite(dir), what);
+			SetBlocking(to, Opposite(dir), what, blocking);
 	}
 
-	void WallNavigationGrid::SetBlocking(irec2 const& room, enum_flags<WallBlocks> what, bool two_ways)
+	void WallNavigationGrid::SetBlocking(irec2 const& room, enum_flags<WallBlocks> what, bool blocking, bool two_ways)
 	{
 		for (auto x = room.p1.x; x < room.p2.x; x++)
 		{
-			SetBlocking(ivec2{ x, room.p1.y }, Direction::Up, what);
-			SetBlocking(ivec2{ x, room.p1.y - 1 }, Direction::Down, what);
+			SetBlocking(ivec2{ x, room.p1.y }, Direction::Up, what, blocking);
+			if (two_ways) SetBlocking(ivec2{ x, room.p1.y - 1 }, Direction::Down, what, blocking);
 
-			SetBlocking(ivec2{ x, room.p2.y - 1 }, Direction::Down, what);
-			SetBlocking(ivec2{ x, room.p2.y }, Direction::Up, what);
+			SetBlocking(ivec2{ x, room.p2.y - 1 }, Direction::Down, what, blocking);
+			if (two_ways) SetBlocking(ivec2{ x, room.p2.y }, Direction::Up, what, blocking);
 		}
 		for (auto y = room.p1.y; y < room.p2.y; y++)
 		{
-			SetBlocking(ivec2{ room.p1.x, y }, Direction::Left, what);
-			SetBlocking(ivec2{ room.p1.x - 1, y }, Direction::Right, what);
+			SetBlocking(ivec2{ room.p1.x, y }, Direction::Left, what, blocking);
+			if (two_ways) SetBlocking(ivec2{ room.p1.x - 1, y }, Direction::Right, what, blocking);
 
-			SetBlocking(ivec2{ room.p2.x - 1, y }, Direction::Right, what);
-			SetBlocking(ivec2{ room.p2.x, y }, Direction::Left, what);
+			SetBlocking(ivec2{ room.p2.x - 1, y }, Direction::Right, what, blocking);
+			if (two_ways) SetBlocking(ivec2{ room.p2.x, y }, Direction::Left, what, blocking);
 		}
 	}
 
-	void WallNavigationGrid::SetNonBlocking(ivec2 from, Direction dir, enum_flags<WallBlocks> what)
-	{
-		if (auto from_tile = At(from))
-		{
-			auto& adj = from_tile->Blocks;
-			what.for_each([&adj, dir](WallBlocks blocks) {
-				adj[(int)blocks].unset(dir);
-			});
-		}
-	}
-
-	void WallNavigationGrid::SetNonBlocking(ivec2 from, ivec2 to, enum_flags<WallBlocks> what, bool two_ways)
-	{
-		Assuming(IsSurrounding(from, to));
-		if (from == to) return;
-		const auto dir = ToDirection(to - from);
-		SetNonBlocking(from, dir, what);
-		if (two_ways)
-			SetNonBlocking(to, Opposite(dir), what);
-	}
-
-	void WallNavigationGrid::SetNonBlocking(irec2 const& room, enum_flags<WallBlocks> what, bool two_ways)
-	{
-		for (auto x = room.p1.x; x < room.p2.x; x++)
-		{
-			SetNonBlocking(ivec2{ x, room.p1.y }, Direction::Up, what);
-			SetNonBlocking(ivec2{ x, room.p1.y - 1 }, Direction::Down, what);
-
-			SetNonBlocking(ivec2{ x, room.p2.y - 1 }, Direction::Down, what);
-			SetNonBlocking(ivec2{ x, room.p2.y }, Direction::Up, what);
-		}
-		for (auto y = room.p1.y; y < room.p2.y; y++)
-		{
-			SetNonBlocking(ivec2{ room.p1.x, y }, Direction::Left, what);
-			SetNonBlocking(ivec2{ room.p1.x - 1, y }, Direction::Right, what);
-
-			SetNonBlocking(ivec2{ room.p2.x - 1, y }, Direction::Right, what);
-			SetNonBlocking(ivec2{ room.p2.x, y }, Direction::Left, what);
-		}
-	}
-
-	WallNavigationGrid::RaycastResult WallNavigationGrid::RayCast(vec2 tile_size, vec2 start, vec2 direction, WallBlocks blocking, double max_distance)
+	RaycastResult WallNavigationGrid::RayCast(vec2 tile_size, vec2 start, vec2 direction, WallBlocks blocking, double max_distance)
 	{
 		auto tile = WorldPositionToTilePosition(start, tile_size);
 		auto old_tile = tile;
 		auto b = glm::lessThanEqual(direction, {});
 		auto dTile = glm::mix(ivec2{ 1, 1 }, ivec2{ -1, -1 }, b);
-		auto dt = (vec2(glm::mix(tile + ivec2{ 1, 1 }, tile, b)) * tile_size - start) / direction;
 		auto ddt = (vec2{ dTile } * tile_size) / direction;
+		auto dt = (vec2(glm::mix(tile + ivec2{ 1, 1 }, tile, b)) * tile_size - start) / direction;
 		double t = 0;
 		if (glm::dot(direction, direction) > 0)
 		{
@@ -255,7 +214,6 @@ namespace gamelib::squares
 						.Neighbor = tile,
 						.HitPosition = start + direction * (float)t,
 						.Wall = ToDirection(tile - old_tile),
-						.Blocking = blocking,
 						.Hit = true,
 					};
 				}

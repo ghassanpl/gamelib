@@ -9,12 +9,13 @@ namespace gamelib
 {
 	struct ButtonInputProperties : InputProperties
 	{
-		ButtonInputProperties(std::string_view name)
+		ButtonInputProperties(std::string_view name, std::string glyph_url = {})
 		{
 			Name = name;
 			Flags.set(InputFlags::Digital);
 			DeadZoneMin = DeadZoneMax = MinValue = 0;
 			StepSize = 1;
+			GlyphURL = std::move(glyph_url);
 		}
 	};
 
@@ -188,6 +189,10 @@ namespace gamelib
 		case (int)MouseButton::Left:
 		case (int)MouseButton::Right:
 		case (int)MouseButton::Middle:
+			return InputProperties{ 
+				.Name = (std::string)magic_enum::enum_name((MouseButton)input), 
+				.GlyphURL = fmt::format("ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_Mouse_{}.png", magic_enum::enum_name((MouseButton)input))
+			};
 		case (int)MouseButton::Button4:
 		case (int)MouseButton::Button5:
 			return InputProperties{ (std::string)magic_enum::enum_name((MouseButton)input) };

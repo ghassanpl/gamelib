@@ -17,6 +17,13 @@ namespace gamelib
 		DEF_COLOR(Cyan, 0, 1, 1)
 		DEF_COLOR(Black, 0, 0, 0)
 		DEF_COLOR(White, 1, 1, 1)
+		DEF_COLOR(Gray, 0.5f, 0.5f, 0.5f)
+		DEF_COLOR(Grey, 0.5f, 0.5f, 0.5f)
+		DEF_COLOR(LightGray, 0.75f, 0.75f, 0.75f)
+		DEF_COLOR(LightGrey, 0.75f, 0.75f, 0.75f)
+		DEF_COLOR(DarkGray, 0.25f, 0.25f, 0.25f)
+		DEF_COLOR(DarkGrey, 0.25f, 0.25f, 0.25f)
+		inline constexpr vec4 Transparent = GetBlack(0.0f);
 		#undef DEF_COLOR
 	}
 

@@ -7,7 +7,15 @@
 
 namespace gamelib::squares
 {
-	/// TODO: Maybe split this into two classes, one that uses per-tile Blocks, one that uses per-wall ones
+	struct RaycastResult
+	{
+		double Distance = 0;
+		ivec2 Tile{ -1, -1 };
+		ivec2 Neighbor{ -1, -1 };
+		vec2 HitPosition{ 0,0 };
+		Direction Wall = Direction::None;
+		bool Hit = false;
+	};
 
 	struct BaseNavigationTile
 	{
@@ -31,6 +39,17 @@ namespace gamelib::squares
 		/// Returns the REVERSED path, for ease of popping
 		template <bool DIAGONALS = true, typename PASSABLE_FUNCTION, typename HEURISTIC_FUNCTION, typename COST_FUNCTION>
 		std::vector<ivec2> AStarSearch(ivec2 start, ivec2 goal, PASSABLE_FUNCTION&& passable_func, HEURISTIC_FUNCTION&& heuristic, COST_FUNCTION&& cost_function);
+
+		/// Returns first hit
+		template <typename PASSABLE_FUNCTION, typename ENTERED_TILE_FUNCTION>
+		RaycastResult RayCast(vec2 tile_size, vec2 start, vec2 direction, PASSABLE_FUNCTION&& passable_func, ENTERED_TILE_FUNCTION&& entered_tile_func, double max_distance = std::numeric_limits<double>::max());
+
+		template <typename PASSABLE_FUNCTION, typename ENTERED_TILE_FUNCTION>
+		RaycastResult SegmentCast(vec2 tile_size, vec2 start, vec2 end, PASSABLE_FUNCTION&& passable_func, ENTERED_TILE_FUNCTION&& entered_tile_func);
+
+		/// Goes through all hits unles HIT_FUNCTION returns false
+		template <typename PASSABLE_FUNCTION, typename ENTERED_TILE_FUNCTION, typename HIT_FUNCTION>
+		void RayCastCallback(vec2 tile_size, vec2 start, vec2 direction, PASSABLE_FUNCTION&& passable_func, ENTERED_TILE_FUNCTION&& entered_tile_func, HIT_FUNCTION&& hit_func, double max_distance = std::numeric_limits<double>::max());
 
 		double& Cost(ivec2 pos) noexcept { return this->At(pos)->Cost; }
 		double Cost(ivec2 pos) const noexcept { return this->At(pos)->Cost; }
@@ -93,6 +112,8 @@ namespace gamelib::squares
 		FLAG_METHODS(Visible)
 		FLAG_METHODS(WasSeen)
 		FLAG_METHODS(Lit)
+
+#undef FLAG_METHODS
 
 		template <typename FUNC>
 		void SmoothPath(std::vector<ivec2>& path, FUNC&& blocks_func) const;
@@ -166,29 +187,29 @@ namespace gamelib::squares
 		enum_flags<WallBlocks>& BlocksIn(ivec2 from, ivec2 to);
 		enum_flags<WallBlocks> const& BlocksIn(ivec2 from, ivec2 to) const;
 
-		void SetBlocking(ivec2 from, Direction dir, enum_flags<WallBlocks> what);
-		void SetBlocking(ivec2 from, ivec2 to, enum_flags<WallBlocks> what, bool two_ways = true);
-		void SetBlocking(irec2 const& room, enum_flags<WallBlocks> what, bool two_ways = true);
+		void SetBlocking(ivec2 from, Direction dir, enum_flags<WallBlocks> what, bool blocking);
+		void SetBlocking(ivec2 from, ivec2 to, enum_flags<WallBlocks> what, bool blocking, bool two_ways = true);
+		void SetBlocking(irec2 const& room, enum_flags<WallBlocks> what, bool blocking, bool two_ways = true);
 
-		void SetNonBlocking(ivec2 from, Direction dir, enum_flags<WallBlocks> what);
-		void SetNonBlocking(ivec2 from, ivec2 to, enum_flags<WallBlocks> what, bool two_ways = true);
-		void SetNonBlocking(irec2 const& room, enum_flags<WallBlocks> what, bool two_ways = true);
+#define FLAG_METHODS(name) \
+	void Set##name(ivec2 pos, bool value) noexcept { At(pos)->Flags.set_to(value, WallNavigationTile::TileFlags::name); } \
+	bool name(ivec2 pos) const noexcept { return At(pos)->Flags.is_set(WallNavigationTile::TileFlags::name); } \
+	void SetAll##name(bool value) { ForEach([this, value](ivec2 pos) { Set##name(pos, value); return false; }); }
 
-		bool Visible(ivec2 from, ivec2 to) const { return !Blocks(from, to, WallBlocks::Sight); }
-		bool Passable(ivec2 from, ivec2 to) const { return !Blocks(from, to, WallBlocks::Passage); }
+		FLAG_METHODS(InSet)
+		FLAG_METHODS(Visited)
+		FLAG_METHODS(Visible)
+		FLAG_METHODS(WasSeen)
+		FLAG_METHODS(Lit)
 
-		struct RaycastResult
-		{
-			double Distance = 0;
-			ivec2 Tile{ -1, -1 };
-			ivec2 Neighbor{ -1, -1 };
-			vec2 HitPosition{ 0,0 };
-			Direction Wall = Direction::None;
-			enum_flags<WallBlocks> Blocking{};
-			bool Hit = false;
-		};
+#undef FLAG_METHODS
 
-		RaycastResult RayCast(vec2 tile_size, vec2 start, vec2 direction, WallBlocks blocking, double max_distance = std::numeric_limits<double>::max());
+		bool BlocksSight(ivec2 from, ivec2 to) const { return Blocks(from, to, WallBlocks::Sight); }
+		bool BlocksPassage(ivec2 from, ivec2 to) const { return Blocks(from, to, WallBlocks::Passage); }
+		
+		void SetBlocksPassage(ivec2 from, ivec2 to, bool passable, bool two_ways = true) { SetBlocking(from, to, WallBlocks::Passage, passable, two_ways); }
+
+		RaycastResult RayCast(vec2 tile_size, vec2 start, vec2 direction, WallBlocks blocking, double max_distance);
 		RaycastResult SegmentCast(vec2 tile_size, vec2 start, vec2 end, WallBlocks blocking);
 	};
 }

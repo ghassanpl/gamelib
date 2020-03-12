@@ -1,4 +1,5 @@
 #include "InputSystem.h"
+#include "../Debugger.h"
 
 namespace gamelib
 {
@@ -196,6 +197,23 @@ namespace gamelib
 		}
 
 		return "";
+	}
+
+	void IInputSystem::Debug(IDebugger& debugger)
+	{
+		debugger.Text("Last Active Device: {}", mLastActiveDevice ? mLastActiveDevice->GetName() : "none");
+		/*
+		IKeyboardDevice* mKeyboard = nullptr;
+		IMouseDevice* mMouse = nullptr;
+		IGamepadDevice* mFirstGamepad = nullptr;
+
+		IInputDevice* mLastActiveDevice = nullptr;
+
+		std::vector<std::unique_ptr<IInputDevice>> mInputDevices;
+		std::map<void*, IGamepadDevice*> mJoystickMap;
+
+		std::map<PlayerID, PlayerInformation> mPlayers;
+		*/
 	}
 
 #if 0

@@ -31,6 +31,12 @@
     <Filter Include="Source Files\Utils">
       <UniqueIdentifier>{e038444e-4666-49b6-8d6e-3e0b965e3af7}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Libs">
+      <UniqueIdentifier>{8854b7f2-2529-4450-b2c7-afc00bbc2cdb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Debug">
+      <UniqueIdentifier>{b923b5f0-302b-4574-977c-cc00ded81b12}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\Includes\Allegro.h">
@@ -135,6 +141,18 @@
     <ClInclude Include="include\Timing.impl.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="lib\imgui-allegro\imgui-Allegro.h">
+      <Filter>Source Files\Libs</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\imgui-allegro\imgui_impl_allegro5.h">
+      <Filter>Source Files\Libs</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Debug\AllegroImGuiDebugger.h">
+      <Filter>Source Files\Debug</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Debug\ImGuiUtils.h">
+      <Filter>Source Files\Debug</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="include\Camera.cpp">
@@ -157,6 +175,18 @@
     </ClCompile>
     <ClCompile Include="include\Navigation\Navigation.cpp">
       <Filter>Source Files\Navigation</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\imgui-allegro\imgui-Allegro.cpp">
+      <Filter>Source Files\Libs</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\imgui-allegro\imgui_impl_allegro5.cpp">
+      <Filter>Source Files\Libs</Filter>
+    </ClCompile>
+    <ClCompile Include="src\AllegroImGuiDebugger.cpp">
+      <Filter>Source Files\Debug</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Debug\Debugger.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

@@ -5,9 +5,9 @@ namespace gamelib::squares
 {
 	/// TODO: http://squidpony.github.io/SquidLib/squidlib/apidocs/squidpony/squidgrid/gui/gdx/LightingHandler.html
 	
-	inline WallNavigationGrid::RaycastResult WallNavigationGrid::SegmentCast(vec2 tile_size, vec2 start, vec2 end, WallBlocks blocking)
+	inline RaycastResult WallNavigationGrid::SegmentCast(vec2 tile_size, vec2 start, vec2 end, WallBlocks blocking)
 	{
-		return RayCast(tile_size, start, glm::normalize(end - start), blocking, glm::length(end - start));
+		return RayCast(tile_size, start, glm::normalize(end - start), blocking, glm::distance(end, start));
 	}
 
 	template <uint64_t FLAGS, typename WALL_FUNCTION>
@@ -150,6 +150,70 @@ namespace gamelib::squares
 		}
 
 		return ReconstructPath(start, goal);
+	}
+
+	template<typename TILE_DATA>
+	template<typename PASSABLE_FUNCTION, typename ENTERED_TILE_FUNCTION>
+	inline RaycastResult BaseNavigationGrid<TILE_DATA>::RayCast(vec2 tile_size, vec2 start, vec2 direction, PASSABLE_FUNCTION&& passable_func, ENTERED_TILE_FUNCTION&& entered_tile_func, double max_distance)
+	{
+		if (glm::dot(direction, direction) <= 0)
+			return {};
+
+		auto tile = this->WorldPositionToTilePosition(start, tile_size);
+		auto old_tile = tile;
+		const auto b = glm::lessThanEqual(direction, {});
+		const auto step = glm::mix(ivec2{ 1, 1 }, ivec2{ -1, -1 }, b);
+		const auto ddt = glm::abs((vec2{ step } * tile_size) / direction);
+		auto dt = glm::abs((vec2(glm::mix(tile + ivec2{ 1, 1 }, tile, b)) * tile_size - start) / direction);
+		double t = 0;
+		
+		while (t < max_distance && this->IsValid(tile))
+		{
+			/// VISITED(tile)
+			entered_tile_func(tile);
+			/// MARK(start + direction * t)
+
+			old_tile = tile;
+
+			if (dt.x < dt.y)
+			{
+				tile.x += step.x;
+				dt.x += ddt.x;
+			}
+			else
+			{
+				tile.y += step.y;
+				dt.y += ddt.y;
+			}
+
+			if (t <= max_distance && !passable_func(old_tile, tile))
+			{
+				return RaycastResult{
+					.Distance = t,
+					.Tile = old_tile,
+					.Neighbor = tile,
+					.HitPosition = start + direction * (float)t,
+					.Wall = ToDirection(tile - old_tile),
+					.Hit = true,
+				};
+			}
+		}
+
+		return RaycastResult{
+			.Distance = max_distance,
+			.Tile = old_tile,
+			.Neighbor = tile,
+			.HitPosition = start + direction * (float)max_distance,
+			.Wall = ToDirection(tile - old_tile),
+			.Hit = false,
+		};
+	}
+
+	template<typename TILE_DATA>
+	template<typename PASSABLE_FUNCTION, typename ENTERED_TILE_FUNCTION>
+	inline RaycastResult BaseNavigationGrid<TILE_DATA>::SegmentCast(vec2 tile_size, vec2 start, vec2 end, PASSABLE_FUNCTION&& passable_func, ENTERED_TILE_FUNCTION&& entered_tile_func)
+	{
+		return RayCast(tile_size, start, glm::normalize(end - start), std::forward<PASSABLE_FUNCTION>(passable_func), std::forward<ENTERED_TILE_FUNCTION>(entered_tile_func), glm::distance(end, start));
 	}
 
 	template<typename IS_TRANSPARENT_FUNC, typename SET_VISIBLE_FUNC>
