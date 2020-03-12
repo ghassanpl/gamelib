@@ -4,10 +4,15 @@
 namespace gamelib
 {
 
-	ICamera::ICamera(ALLEGRO_DISPLAY* display) noexcept
+	ICamera::ICamera(ALLEGRO_DISPLAY* display)
+	{
+		SetFromDisplay(display);
+	}
+	
+	void ICamera::SetFromDisplay(ALLEGRO_DISPLAY* display)
 	{
 		auto size = irec2::from_size(0, 0, al_get_display_width(display), al_get_display_height(display));
-		SetWorldBounds(size, radians_t{0.0f});
+		SetWorldBounds(size, radians_t{ 0.0f });
 		SetViewport(size);
 	}
 

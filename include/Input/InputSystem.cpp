@@ -125,7 +125,7 @@ namespace gamelib
 		return {};
 	}
 
-	vec2 IInputSystem::GetMousePosition()
+	vec2 IInputSystem::GetMousePosition() const
 	{
 		return { (float)GetMouse()->GetInputState(GetMouse()->GetXAxisInput()), (float)GetMouse()->GetInputState(GetMouse()->GetYAxisInput()) };
 	}

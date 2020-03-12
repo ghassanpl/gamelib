@@ -33,10 +33,21 @@ namespace gamelib
 
 		virtual void Text(std::string&& str) = 0;
 
-		virtual void Value(std::string_view name, double val) = 0;
+		virtual void Value(std::string_view name, vec2 const& val, bool writeable) = 0;
+		virtual void Value(std::string_view name, ivec2 const& val, bool writeable) = 0;
+		virtual void Value(std::string_view name, double const& val, bool writeable) = 0;
 
-		virtual void Value(std::string_view name, vec2& val) = 0;
-		virtual void Value(std::string_view name, ivec2& val) = 0;
+		template <typename T>
+		auto Value(std::string_view name, T& val)
+		{
+			this->Value(name, const_cast<const T&>(val), !std::is_const_v<T>);
+		}
+
+		template <typename T>
+		auto Value(std::string_view name, T&& val)
+		{
+			this->Value(name, const_cast<const T&>(val), false);
+		}
 
 	protected:
 

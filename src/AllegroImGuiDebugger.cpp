@@ -9,18 +9,21 @@ namespace gamelib
 		ImGui::Text("%s", str.c_str());
 	}
 
-	void AllegroImGuiDebugger::Value(std::string_view name, double val)
+	void AllegroImGuiDebugger::Value(std::string_view name, double const& val, bool writable)
 	{
-		ImGui::Value(name.data(), (float)val, "%g");
+		if (writable)
+			ImGui::InputDouble(name.data(), (double*)&val);
+		else
+			ImGui::Value(name.data(), (float)val, "%g");
 	}
 
-	void AllegroImGuiDebugger::Value(std::string_view name, vec2& val)
+	void AllegroImGuiDebugger::Value(std::string_view name, vec2 const& val, bool writable)
 	{
-		ImGui::InputFloat2(name.data(), &val.x);
+		ImGui::InputFloat2(name.data(), (float*)&val.x, "%g", writable ? 0 : ImGuiInputTextFlags_ReadOnly);
 	}
-	
-	void AllegroImGuiDebugger::Value(std::string_view name, ivec2& val)
+
+	void AllegroImGuiDebugger::Value(std::string_view name, ivec2 const& val, bool writable)
 	{
-		ImGui::InputInt2(name.data(), &val.x);
+		ImGui::InputInt2(name.data(), (int*)&val.x, writable ? 0 : ImGuiInputTextFlags_ReadOnly);
 	}
 }

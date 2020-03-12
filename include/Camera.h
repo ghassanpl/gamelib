@@ -26,8 +26,8 @@ namespace gamelib
 
 	struct ICamera
 	{
-		ICamera() noexcept = default;
-		ICamera(ALLEGRO_DISPLAY* display) noexcept;
+		ICamera() = default;
+		ICamera(ALLEGRO_DISPLAY* display);
 		ICamera(screen_bounds_t const& sbounds, world_bounds_t const& wbounds, radians_t rotation = radians_t{ 0.0f }) noexcept;
 
 		enum_flags<DrawLayer> DrawLayers = enum_flags<DrawLayer>::all();
@@ -44,7 +44,7 @@ namespace gamelib
 		//vec2 LocalMousePosition() const; /// <- if MouseInView(), this is the camera space position of the mouse point over this camera
 		//vec2 WorldMousePosition() const; /// <- if MouseInView(), this is the world position of the mouse point through this camera
 
-		/// TODO: Are both these versions neccessary?
+		void SetFromDisplay(ALLEGRO_DISPLAY* display);
 
 		vec2 ScreenSpaceToCameraSpace(vec2 screen_point) const;
 		vec2 ScreenSpaceToWorldSpace(vec2 screen_point) const;
