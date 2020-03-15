@@ -72,6 +72,13 @@ void Game::Init()
 
 	al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
 
+	al_add_new_bitmap_flag(ALLEGRO_MIPMAP);
+	al_add_new_bitmap_flag(ALLEGRO_MIN_LINEAR);
+	al_add_new_bitmap_flag(ALLEGRO_MAG_LINEAR);
+	al_add_new_bitmap_flag(ALLEGRO_NO_PREMULTIPLIED_ALPHA);
+
+	//al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA);
+
 	mInput.Init();
 	mInput.MapKeyAndButton('up', KeyboardKey::W, XboxGamepadButton::Up);
 	mInput.MapKeyAndButton('down', KeyboardKey::S, XboxGamepadButton::Down);
@@ -83,17 +90,17 @@ void Game::Init()
 
 	al_identity_transform(&mUICamera);
 	mCamera.SetFromDisplay(mDisplay);
+
 }
 
 void Game::Load()
 {
-	mFont = al_load_ttf_font("data/fonts/plantin_regular.ttf", 36, 0);
+	mFont = al_load_ttf_font("data/fonts/plantin_regular.ttf", 36, ALLEGRO_NO_PREMULTIPLIED_ALPHA);
 	mFontHeight = al_get_font_line_height(mFont);
 
-	al_add_new_bitmap_flag(ALLEGRO_MIPMAP);
-	al_add_new_bitmap_flag(ALLEGRO_MIN_LINEAR);
-	al_add_new_bitmap_flag(ALLEGRO_MAG_LINEAR);
-	al_add_new_bitmap_flag(ALLEGRO_NO_PREMULTIPLIED_ALPHA);
+	mTileDescription.SetBounds(rec2::from_size(16, 16, 300, 200));
+	mTileDescription.SetDefaultStyle({ .Font = mFont });
+
 	tiles[0] = al_load_bitmap("data/tile.png");
 	tiles[1] = al_load_bitmap("data/tile2.png");
 	tiles[2] = al_load_bitmap("data/tile3.png");
@@ -109,6 +116,10 @@ void Game::Load()
 	input_gfx['act'] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_Mouse_Left.png");
 	input_gfx['exam'] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_Mouse_Right.png");
 	input_gfx['addi'] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_Mouse_Middle.png");
+
+	mTileDescription.SetImageResolver([](std::string_view name) {
+
+	});
 
 	characters[0] = al_load_bitmap("data/barbarian_shadow.png");
 
@@ -191,11 +202,12 @@ void Game::Update()
 		MovePlayer(Direction::Down);
 
 	auto mouse_tile_pos = GetMouseTilePosition();
+	mTileDescription.Clear();
 	if (mCurrentMap->IsValid(mouse_tile_pos) && IsNeighbor(mouse_tile_pos, mPlayer->Position()) && !mCurrentMap.NavGrid.BlocksPassage(mouse_tile_pos, mPlayer->Position()))
 	{
 		AddCommand('act', "Move", [&] {
 			MovePlayer(ToDirection(mouse_tile_pos - mPlayer->Position()));
-			});
+		});
 	}
 
 	for (auto& cmd : mCommands)
@@ -307,22 +319,7 @@ void Game::Render()
 
 	al_use_transform(&mUICamera);
 
-	Page page;
-	page.Bounds = rec2::from_size(16, 16, 300, 200);
-	page.DefaultStyle.Font = mFont;
-	page.SetText("hello<p><color=FF00FFFF>wor<pop>ld, my friends! This is not a fun exercise!");
-	for (auto& g : page.Glyphs)
-	{
-		if (!g.Glyph.bitmap) continue;
-
-		al_draw_tinted_scaled_bitmap(
-			g.Glyph.bitmap,
-			g.Color,
-			g.Glyph.x, g.Glyph.y, g.Glyph.w, g.Glyph.h,
-			g.Bounds.p1.x, g.Bounds.p1.y, g.Bounds.width(), g.Bounds.height(),
-			0
-		);
-	}
+	mTileDescription.Draw();
 	/*
 	rec2 selected_tile_desc_rect = rec2::from_size(16, 16, 300, 200);
 	float y = 0;
@@ -366,6 +363,8 @@ void Game::AddCommand(InputID input, std::string_view text, std::function<void()
 		.Input = input,
 		.Func = std::move(func)
 	});
+
+	mTileDescription.AddParagraph(fmt::format("<img={}> {}", (int)input, text));
 }
 
 void Game::Shutdown()

@@ -189,6 +189,8 @@ private:
 
 	std::mt19937_64 RNG;
 
+	Page mTileDescription;
+
 	Map mCurrentMap;
 	TileObject* mPlayer = nullptr;
 };

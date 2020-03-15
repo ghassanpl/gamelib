@@ -38,6 +38,10 @@ namespace gamelib
 		intptr_t StartGlyph = 0;
 		intptr_t EndGlyph = 0;
 
+		/// TODO: Alignment
+		/// TODO: Line spacing
+		/// TODO: Margins
+
 		void Reflow(gsl::span<Glyph> glyphs, float max_width);
 	};
 
@@ -51,18 +55,42 @@ namespace gamelib
 
 	struct Page
 	{
-		rec2 Bounds;
-		std::vector<Paragraph> Paragraphs;
-		std::vector<Glyph> Glyphs;
+		/// TODO: Alignment, Paragraph spacing
 
-		std::function<ALLEGRO_BITMAP*(std::string_view)> ImageResolver;
-		std::function<ALLEGRO_FONT*(std::string_view)> FontResolver;
+		void SetBounds(rec2 const& bounds) { mBounds = bounds; mNeedsReflow = true; }
+		rec2 const& GetBounds() const { return mBounds; }
 
-		Style DefaultStyle;
+		void SetDefaultStyle(Style const& style) { mDefaultStyle = style; mNeedsReflow = true; }
+		Style const& GetDefaultStyle() const { return mDefaultStyle; }
 
+		void SetImageResolver(std::function<ALLEGRO_GLYPH(std::string_view)> resolver) { mImageResolver = resolver; mNeedsReflow = true; }
+		void SetFontResolver(std::function<ALLEGRO_FONT*(std::string_view)> resolver) { mFontResolver = resolver; mNeedsReflow = true; }
+
+		void Clear()
+		{
+			mGlyphs.clear();
+			mParagraphs.clear();
+			mNeedsReflow = false;
+		}
 		void SetText(std::string_view str);
+		void AddParagraph(std::string_view str);
+
+		void Draw();
+
+		gsl::span<Glyph const> Glyphs() const { return mGlyphs; }
 
 	private:
+
+		rec2 mBounds;
+		std::vector<Paragraph> mParagraphs;
+		std::vector<Glyph> mGlyphs;
+
+		std::function<ALLEGRO_GLYPH(std::string_view)> mImageResolver = [](std::string_view) { return ALLEGRO_GLYPH{}; };
+		std::function<ALLEGRO_FONT*(std::string_view)> mFontResolver = [](std::string_view) { return nullptr; };
+
+		Style mDefaultStyle;
+
+		bool mNeedsReflow = true;
 
 		void Reflow();
 
