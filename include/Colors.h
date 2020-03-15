@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Includes/GLM.h"
+#include <glm/gtx/color_encoding.hpp>
 
 namespace gamelib
 {

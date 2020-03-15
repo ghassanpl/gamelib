@@ -185,6 +185,7 @@
     <ClInclude Include="include\Navigation\Squares.h" />
     <ClInclude Include="include\Random.h" />
     <ClInclude Include="include\Resources\Resource.h" />
+    <ClInclude Include="include\Text\TextField.h" />
     <ClInclude Include="include\Timing.h" />
     <ClInclude Include="include\Timing.impl.h" />
     <ClInclude Include="include\Transformable.h" />
@@ -199,6 +200,7 @@
     <ClCompile Include="include\Input\InputDevice.cpp" />
     <ClCompile Include="include\Input\InputSystem.cpp" />
     <ClCompile Include="include\Navigation\Navigation.cpp" />
+    <ClCompile Include="include\Text\TextField.cpp" />
     <ClCompile Include="include\Transformable.cpp" />
     <ClCompile Include="lib\imgui-allegro\imgui-Allegro.cpp" />
     <ClCompile Include="lib\imgui-allegro\imgui_impl_allegro5.cpp" />

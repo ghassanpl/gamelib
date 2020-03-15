@@ -23,12 +23,3 @@ int main()
 	game.Loop();
 	game.Shutdown();
 }
-
-void TileObject::MoveTo(ivec2 pos)
-{
-	if (!mParentMap->RoomGrid.IsValid(pos)) return;
-
-	mParentMap->RoomGrid.At(mPosition)->Objects.erase(this);
-	mPosition = pos;
-	mParentMap->RoomGrid.At(mPosition)->Objects.insert(this);
-}

@@ -1,5 +1,12 @@
 #include "game.h"
 
+ALLEGRO_USTR_INFO ToAllegro(std::string_view str)
+{
+	ALLEGRO_USTR_INFO result{};
+	al_ref_buffer(&result, str.data(), str.size());
+	return result;
+}
+
 void Map::BuildRoom(irec2 const& room, ALLEGRO_BITMAP* bg)
 {
 	NavGrid.SetBlocking(room, { WallBlocks::Passage, WallBlocks::Sight }, true);
@@ -300,6 +307,23 @@ void Game::Render()
 
 	al_use_transform(&mUICamera);
 
+	Page page;
+	page.Bounds = rec2::from_size(16, 16, 300, 200);
+	page.DefaultStyle.Font = mFont;
+	page.SetText("hello<p><color=FF00FFFF>wor<pop>ld, my friends! This is not a fun exercise!");
+	for (auto& g : page.Glyphs)
+	{
+		if (!g.Glyph.bitmap) continue;
+
+		al_draw_tinted_scaled_bitmap(
+			g.Glyph.bitmap,
+			g.Color,
+			g.Glyph.x, g.Glyph.y, g.Glyph.w, g.Glyph.h,
+			g.Bounds.p1.x, g.Bounds.p1.y, g.Bounds.width(), g.Bounds.height(),
+			0
+		);
+	}
+	/*
 	rec2 selected_tile_desc_rect = rec2::from_size(16, 16, 300, 200);
 	float y = 0;
 	al_draw_filled_rounded_rectangle(selected_tile_desc_rect.p1.x, selected_tile_desc_rect.p1.y, selected_tile_desc_rect.p2.x, selected_tile_desc_rect.p2.y, 4.0f, 4.0f, ToAllegro(half_black));
@@ -310,6 +334,7 @@ void Game::Render()
 		DrawText(mFont, { selected_tile_desc_rect.p1.x + mFontHeight, selected_tile_desc_rect.p1.x + y }, Colors::White, Colors::Transparent, HorizontalAlign::Left, "{}", cmd.Text);
 		y += mFontHeight + 4;
 	}
+	*/
 
 	ImGui::Allegro::Render(mDisplay);
 
@@ -353,4 +378,13 @@ void Game::Shutdown()
 	al_uninstall_mouse();
 	al_uninstall_keyboard();
 	al_uninstall_system();
+}
+
+void TileObject::MoveTo(ivec2 pos)
+{
+	if (!mParentMap->RoomGrid.IsValid(pos)) return;
+
+	mParentMap->RoomGrid.At(mPosition)->Objects.erase(this);
+	mPosition = pos;
+	mParentMap->RoomGrid.At(mPosition)->Objects.insert(this);
 }

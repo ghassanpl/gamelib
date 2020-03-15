@@ -1,4 +1,5 @@
 #pragma once
+#define GLM_ENABLE_EXPERIMENTAL 1
 #include <glm/vec2.hpp>
 #include <glm/vec4.hpp>
 #include <glm/glm.hpp>
@@ -41,7 +42,9 @@ namespace glm
 		static trec2 from_size(T x, T y, T w, T h) noexcept { return { x, y, x + w, y + h }; };
 
 		trec2 operator+(tvec op) const noexcept { return { p1 + op, p2 + op }; }
+		trec2& operator+=(tvec op) noexcept { p1 += op; p2 += op; return *this; };
 		trec2 operator-(tvec op) const noexcept { return { p1 - op, p2 - op }; }
+		trec2& operator-=(tvec op) noexcept { p1 -= op; p2 -= op; return *this; };
 		trec2 operator*(T op) const noexcept { return { p1 * op, p2 * op }; }
 
 		tvec size() const noexcept { return p2 - p1; }

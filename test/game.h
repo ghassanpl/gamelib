@@ -1,4 +1,5 @@
 #pragma once
+#define ALLEGRO_UNSTABLE 1
 #include <allegro5/allegro.h>
 #include <allegro5/allegro_primitives.h>
 #include <allegro5/allegro_image.h>
@@ -28,6 +29,7 @@
 #include <Navigation/Navigation.h>
 #include <Navigation/Maze.h>
 #include <Input/AllegroInput.h>
+#include <Text/TextField.h>
 #include <Utils/PanZoomer.h>
 #include <Debug/ImGuiUtils.h>
 #include <Debug/AllegroImGuiDebugger.h>
@@ -99,30 +101,6 @@ struct Map
 
 struct Game
 {
-	ALLEGRO_DISPLAY* mDisplay = nullptr;
-	ALLEGRO_EVENT_QUEUE* mQueue = nullptr;
-	ivec2 mScreenSize{};
-	ALLEGRO_FONT* mFont = nullptr;
-
-	IErrorReporter mReporter;
-	TimingSystem mTiming{ al_get_time };
-	AllegroInput mInput{ mReporter };
-	ICamera mCamera;
-	PanZoomer mPanZoomer{ mInput, mCamera };
-	AllegroImGuiDebugger mDebugger;
-
-	bool mQuit = false;
-	double mDT = 0;
-
-	float mFontHeight;
-
-	ALLEGRO_TRANSFORM mUICamera{};
-
-	std::mt19937_64 RNG;
-
-	Map mCurrentMap;
-	TileObject* mPlayer = nullptr;
-
 	void Init();
 
 	ALLEGRO_BITMAP* tiles[7];
@@ -139,10 +117,6 @@ struct Game
 
 	void Events();
 
-	auto GetMouseWorldPosition() const { return mCamera.ScreenSpaceToWorldSpace(mInput.GetMousePosition()); }
-	auto GetMouseTilePosition() const { return mCurrentMap.RoomGrid.WorldPositionToTilePosition(GetMouseWorldPosition(), tile_size); }
-	auto GetMouseTile() { return mCurrentMap.RoomGrid.At(GetMouseTilePosition()); }
-
 	void Update();
 
 	void Debug();
@@ -151,19 +125,6 @@ struct Game
 
 	void UpdateCamera();;
 	
-	void MovePlayer(Direction move_dir);
-
-	struct Command
-	{
-		std::string Text;
-		InputID Input = InvalidInput;
-		std::function<void()> Func;
-	};
-
-	std::vector<Command> mCommands;
-
-	void AddCommand(InputID input, std::string_view text, std::function<void()> func);
-
 	template <typename... ARGS>
 	void DrawText(ALLEGRO_FONT* font, vec2 position, Color const& color, Color const& background_color, HorizontalAlign align, std::string_view format, ARGS&&... args)
 	{
@@ -187,4 +148,47 @@ struct Game
 	}
 
 	void Shutdown();
+
+private:
+
+	void MovePlayer(Direction move_dir);
+
+	struct Command
+	{
+		std::string Text;
+		InputID Input = InvalidInput;
+		std::function<void()> Func;
+	};
+
+	std::vector<Command> mCommands;
+
+	void AddCommand(InputID input, std::string_view text, std::function<void()> func);
+
+	auto GetMouseWorldPosition() const { return mCamera.ScreenSpaceToWorldSpace(mInput.GetMousePosition()); }
+	auto GetMouseTilePosition() const { return mCurrentMap.RoomGrid.WorldPositionToTilePosition(GetMouseWorldPosition(), tile_size); }
+	auto GetMouseTile() { return mCurrentMap.RoomGrid.At(GetMouseTilePosition()); }
+
+	ALLEGRO_DISPLAY* mDisplay = nullptr;
+	ALLEGRO_EVENT_QUEUE* mQueue = nullptr;
+	ivec2 mScreenSize{};
+	ALLEGRO_FONT* mFont = nullptr;
+
+	IErrorReporter mReporter;
+	TimingSystem mTiming{ al_get_time };
+	AllegroInput mInput{ mReporter };
+	ICamera mCamera;
+	PanZoomer mPanZoomer{ mInput, mCamera };
+	AllegroImGuiDebugger mDebugger;
+
+	bool mQuit = false;
+	double mDT = 0;
+
+	float mFontHeight;
+
+	ALLEGRO_TRANSFORM mUICamera{};
+
+	std::mt19937_64 RNG;
+
+	Map mCurrentMap;
+	TileObject* mPlayer = nullptr;
 };

@@ -1,5 +1,6 @@
 #pragma once
 
+#define ALLEGRO_UNSTABLE 1
 #include <array>
 #include "GLM.h"
 #include <allegro5/transformations.h>
