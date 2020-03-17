@@ -16,6 +16,8 @@ namespace gamelib
 		float MinThrowSpeed = 0;
 		double ZoomSpeed = 100;
 
+		bool Grabbed() const { return mGrabbed; }
+
 		PanZoomer(IInputSystem& input, ICamera& camera, InputID grab_input, InputID zoom_input, InputID position)
 			: Input(input), Camera(camera), GrabInput(grab_input), ZoomInput(zoom_input), PositionInput(position)
 		{
@@ -27,7 +29,7 @@ namespace gamelib
 
 		}
 
-		void Update(seconds_t time)
+		bool Update(seconds_t time)
 		{
 			const auto pos = GetMouseScreenPos();
 
@@ -70,8 +72,13 @@ namespace gamelib
 			{
 				auto zoom = GetZoomInput();
 				if (zoom != 0)
+				{
 					Camera.ScreenZoom(pos.Value, -zoom * ZoomSpeed);
+					return true;
+				}
 			}
+
+			return mGrabbed;
 		}
 
 		std::function<void(screen_pos_t)> OnGrab;

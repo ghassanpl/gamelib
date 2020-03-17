@@ -37,6 +37,9 @@
     <Filter Include="Source Files\Debug">
       <UniqueIdentifier>{b923b5f0-302b-4574-977c-cc00ded81b12}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Serialization">
+      <UniqueIdentifier>{731f41e2-648a-47a6-bc11-33a6d38dd65f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\Includes\Allegro.h">
@@ -155,6 +158,21 @@
     </ClInclude>
     <ClInclude Include="include\Text\TextField.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Serialization\IArchiver.h">
+      <Filter>Source Files\Serialization</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Serialization\CSV.h">
+      <Filter>Source Files\Serialization</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Buffers.h">
+      <Filter>Source Files\Serialization</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Serialization\IOStreamBuffers.h">
+      <Filter>Source Files\Serialization</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Serialization\StringBuffers.h">
+      <Filter>Source Files\Serialization</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

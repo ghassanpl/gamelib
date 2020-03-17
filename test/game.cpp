@@ -1,4 +1,5 @@
 #include "game.h"
+#include <fstream>
 
 ALLEGRO_USTR_INFO ToAllegro(std::string_view str)
 {
@@ -28,7 +29,7 @@ void Map::DetermineVisibility(vec2 from_position)
 					NavGrid.SetVisible(entered, true);
 					NavGrid.SetWasSeen(entered, true);
 				}
-				);
+			);
 		}
 	}
 }
@@ -73,15 +74,13 @@ void Game::Init()
 	al_add_new_bitmap_flag(ALLEGRO_MAG_LINEAR);
 	al_add_new_bitmap_flag(ALLEGRO_NO_PREMULTIPLIED_ALPHA);
 
-	//al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA);
-
 	mInput.Init();
 	mInput.MapKeyAndButton("up", KeyboardKey::W, XboxGamepadButton::Up);
 	mInput.MapKeyAndButton("down", KeyboardKey::S, XboxGamepadButton::Down);
 	mInput.MapKeyAndButton("left", KeyboardKey::A, XboxGamepadButton::Left);
 	mInput.MapKeyAndButton("right", KeyboardKey::D, XboxGamepadButton::Right);
 	mInput.MapMouse(MouseButton::Left, "act");
-	mInput.MapMouse(MouseButton::Right, "examine");
+	mInput.MapMouse(MouseButton::Right, "search");
 	mInput.MapMouse(MouseButton::Middle, "additional");
 
 	al_identity_transform(&mUICamera);
@@ -114,7 +113,7 @@ void Game::Load()
 	input_gfx["left"] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_A.png");
 	input_gfx["right"] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_D.png");
 	input_gfx["act"] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_Mouse_Left.png");
-	input_gfx["examine"] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_Mouse_Right.png");
+	input_gfx["search"] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_Mouse_Right.png");
 	input_gfx["additional"] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_Mouse_Middle.png");
 
 	mTileDescription.SetImageResolver([&](std::string_view name) {
@@ -122,6 +121,8 @@ void Game::Load()
 			return it->second;
 		return (ALLEGRO_BITMAP*)nullptr;
 	});
+
+	LoadClasses("data/stats/heroes.csv", mHeroClasses);
 
 	mCurrentMap.RoomGrid.ForEach([&](ivec2 pos) {
 		auto tile = mCurrentMap.RoomGrid.At(pos);
@@ -135,7 +136,7 @@ void Game::Load()
 
 	mCurrentMap.SpawnObject<Stairs>({ 0,0 });
 
-	mPlayer = mCurrentMap.SpawnObject<Hero>({ 0,0 });
+	mPlayer = mCurrentMap.SpawnObject<Hero>({ 0,0 }, &mHeroClasses["Warrior"]);
 
 	mCurrentMap.SpawnObject<Furniture>({ 3,3 });
 	mCurrentMap.SpawnObject<Monster>({ 4,3 });
@@ -152,6 +153,8 @@ void Game::Load()
 
 void Game::Start()
 {
+	UpdateCamera();
+	mCamera.SetWorldCenter(mCameraTarget);
 	mTiming.Reset();
 }
 
@@ -202,7 +205,15 @@ void Game::Events()
 
 void Game::Update()
 {
-	mPanZoomer.Update(mDT);
+	if (mPanZoomer.Update(mDT))
+		mCameraFocus = false;
+
+	if (mCameraFocus)
+	{
+		auto wc = mCamera.GetWorldCenter();
+		wc += ((mCameraTarget - wc) * (float)mDT) * mCameraSpeed;
+		mCamera.SetWorldCenter(wc);
+	}
 
 	Direction move_dir = Direction::None;
 	if (mInput.WasButtonPressed("up"))
@@ -226,7 +237,8 @@ void Game::Update()
 		
 		for (auto& object : mCurrentMap.RoomGrid.At(mouse_tile_pos)->Objects)
 		{
-			name_at = object->Name();
+			if (object->Visible())
+				name_at = object->Name();
 		}
 
 		mTileDescription.AddParagraph(name_at);
@@ -242,7 +254,7 @@ void Game::Update()
 
 			if (!name_at.empty())
 			{
-				AddCommand("examine", "Examine " + name_at, [&] {
+				AddCommand("search", "Search " + name_at, [&] {
 
 				});
 			}
@@ -302,6 +314,9 @@ void Game::Render()
 	}
 
 	/// Objects
+
+	std::vector<TileObject*> obj_to_draw;
+
 	for (int y = 0; y < mCurrentMap.RoomGrid.Height(); y++)
 	{
 		auto yp = y * tile_width;
@@ -312,7 +327,16 @@ void Game::Render()
 			auto xp = x * tile_width;
 			auto tile = mCurrentMap.RoomGrid.At(x, y);
 
+			obj_to_draw.clear();
+
 			for (auto obj : tile->Objects)
+			{
+				if (!obj->Visible()) continue;
+				obj_to_draw.push_back(obj);
+			}
+
+			std::sort(obj_to_draw.begin(), obj_to_draw.end(), [](TileObject* a, TileObject* b) { return a->Z() < b->Z(); });
+			for (auto obj : obj_to_draw)
 			{
 				const auto obj_origin_pos = obj->Position();
 				const auto obj_offset = ivec2{ x,y } - obj_origin_pos;
@@ -320,8 +344,9 @@ void Game::Render()
 				al_draw_tinted_scaled_rotated_bitmap_region(
 					obj->Texture,
 					obj_offset.x * tile_width, obj_offset.y * tile_width, tile_width, tile_width,
-					ToAllegro(Colors::White), half_tile_size, half_tile_size,
-					xp + half_tile_size, yp + half_tile_size, 1.0f, 1.0f, glm::radians((obj->RotationFlags >> 2) * 90.0f), obj->RotationFlags & 3
+					ToAllegro(Colors::White), 
+					half_tile_size, half_tile_size, xp + half_tile_size, yp + half_tile_size, 1.0f, 1.0f, 
+					glm::radians((obj->RotationFlags >> 2) * 90.0f), obj->RotationFlags & 3
 				);
 			}
 		}
@@ -381,7 +406,8 @@ void Game::Render()
 void Game::UpdateCamera()
 {
 	auto player_world_pos = mCurrentMap.RoomGrid.TilePositionToWorldPosition(mPlayer->Position(), tile_size) + tile_size / 2.0f;
-	mCamera.SetWorldCenter(player_world_pos);
+	mCameraTarget = player_world_pos;
+	mCameraFocus = true;
 	mCurrentMap.DetermineVisibility(player_world_pos);
 }
 
@@ -445,6 +471,7 @@ void TileObject::MoveTo(ivec2 pos)
 {
 	if (!mParentMap->RoomGrid.IsValid(pos)) return;
 
+	/// TODO: Remove and insert to ALL tiles in Size
 	mParentMap->RoomGrid.At(mPosition)->Objects.erase(this);
 	mPosition = pos;
 	mParentMap->RoomGrid.At(mPosition)->Objects.insert(this);

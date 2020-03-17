@@ -11,7 +11,7 @@ namespace gamelib
 
 	OutputProperties IInputDevice::GetOutputProperties(DeviceOutputID input) const
 	{
-		ParentSystem.ErrorReporter.Error("Input device has no output properties").Value("Device", GetName());
+		ParentSystem.ErrorReporter.NewError("Input device has no output properties").Value("Device", GetName()).Perform();
 		std::terminate();
 	}
 
@@ -402,10 +402,11 @@ namespace gamelib
 
 	void IInputDevice::ReportInvalidInput(DeviceInputID input) const
 	{
-		ParentSystem.ErrorReporter.Error("Input is not valid")
+		ParentSystem.ErrorReporter.NewError("Input is not valid")
 			.Value("Input", input)
 			.Value("Device", GetName())
-			.Value("ValidRange", GetMaxInput() - 1);
+			.Value("ValidRange", GetMaxInput() - 1)
+			.Perform();
 	}
 
 }

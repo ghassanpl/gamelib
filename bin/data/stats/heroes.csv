@@ -1,0 +1,3 @@
+Name,Health,Attack,Defense,Speed,MagicPower,Strength,Image,StartingEquipment,StartingSkills,Motto
+Warrior,4,3,6,4,0,6,obj/heroes/barbarian,"[""Longsword""]",[],"Get out of my way, or I will <b>crush</b> you!"
+Rogue,4,1,6,7,0,5,obj/heroes/elf,"[""Dagger""]",[],"""Hey, what's that? Oh, it's just your blood spray."""

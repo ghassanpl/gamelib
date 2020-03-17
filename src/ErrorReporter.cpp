@@ -213,7 +213,7 @@ namespace gamelib
 		AdditionalInfo("System Error", "{} ({})", CreateQueryHyperlink(message.data()), CreateQueryHyperlink(fmt::format("Windows Error Code 0x{:X}", gle), std::to_string(gle)));
 	}
 	
-	Reporter::~Reporter() { ErrorReporter.PerformReport(*this); }
+	void Reporter::Perform() { ErrorReporter.PerformReport(*this); }
 
 	void IErrorReporter::PerformReport(Reporter const& holder) const
 	{

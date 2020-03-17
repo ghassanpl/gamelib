@@ -156,6 +156,7 @@
   <ItemGroup>
     <ClInclude Include="include\Align.h" />
     <ClInclude Include="include\Animations.h" />
+    <ClInclude Include="include\Buffers.h" />
     <ClInclude Include="include\Camera.h" />
     <ClInclude Include="include\Colors.h" />
     <ClInclude Include="include\Combos\Align+GLM.h" />
@@ -185,6 +186,10 @@
     <ClInclude Include="include\Navigation\Squares.h" />
     <ClInclude Include="include\Random.h" />
     <ClInclude Include="include\Resources\Resource.h" />
+    <ClInclude Include="include\Serialization\CSV.h" />
+    <ClInclude Include="include\Serialization\IArchiver.h" />
+    <ClInclude Include="include\Serialization\IOStreamBuffers.h" />
+    <ClInclude Include="include\Serialization\StringBuffers.h" />
     <ClInclude Include="include\Text\TextField.h" />
     <ClInclude Include="include\Timing.h" />
     <ClInclude Include="include\Timing.impl.h" />

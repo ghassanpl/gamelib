@@ -32,6 +32,9 @@
 #include <Text/TextField.h>
 #include <Utils/PanZoomer.h>
 #include <Debug/ImGuiUtils.h>
+#include <Serialization/IArchiver.h>
+#include <Serialization/IOStreamBuffers.h>
+#include <Serialization/CSV.h>
 #include <Debug/AllegroImGuiDebugger.h>
 
 using namespace gamelib;
@@ -39,20 +42,18 @@ using namespace gamelib::squares;
 
 struct Map;
 
-/*
-struct ObjectType
+enum class ObjectZ
 {
-	std::string Name;
-	ObjectClass Class;
-	ALLEGRO_BITMAP* Texture = nullptr;
-	uvec2 BaseSize{ 1,1 };
+	UnderFloor = -1,
+	Floor = 0,
+	Furniture,
+	Items,
+	Monsters,
+	Heroes,
+
+	Ceiling = 100,
 };
 
-enum class ObjectFlags
-{
-	CustomFlags = 32
-};
-*/
 struct TileObject
 {
 	TileObject(Map* pm, ivec2 at) : mParentMap(pm), mPosition(at) {}
@@ -74,6 +75,8 @@ struct TileObject
 	virtual std::string Name() const { return "[object]"; }
 	virtual std::string Image() const { return "error"; }
 
+	virtual ObjectZ Z() const { return ObjectZ::Furniture; }
+
 	virtual bool Visible() const { return true; }
 	virtual bool BlocksMovement() const { return false; }
 
@@ -88,59 +91,147 @@ struct Furniture : TileObject
 	using TileObject::TileObject;
 	bool Searched = false;
 	virtual bool BlocksMovement() const override { return true; }
-	virtual std::string Name() const  override{ return "Furniture"; }
+	virtual std::string Name() const override { return "Furniture"; }
 	virtual std::string Image() const override { return "obj/furniture/rubble"; }
+};
+
+struct MonsterClass
+{
+	std::string Name;
+	std::string Image;
+	int Health = 1;
+	int Attack = 2;
+	int Defense = 5;
+	int Damage = 1;
+	int Speed = 3;
+	int XP = 1;
+	std::vector<std::string> Abilities;
+	std::vector<std::string> Traits;
+	std::vector<std::string> Barks;
 };
 
 struct Monster : TileObject
 {
 	using TileObject::TileObject;
+
+	MonsterClass const* Class = nullptr;
+
 	virtual bool BlocksMovement() const override { return true; }
-	virtual std::string Name() const  override { return "Monster"; }
+	virtual std::string Name() const override { return "Monster"; }
 	virtual std::string Image() const override { return "obj/monsters/goblin"; }
+
+	virtual ObjectZ Z() const override { return ObjectZ::Monsters; }
+
+};
+
+struct HeroClass
+{
+	std::string Name;
+	int Health;
+	int Attack;
+	int Defense;
+	int Speed;
+	int MagicPower;
+	int Strength;
+	std::string Image;
+	std::vector<std::string> StartingEquipment;
+	std::vector<std::string> StartingSkills;
+	std::string Motto;
+
+	template<class Archive>
+	void Archive(Archive& ar)
+	{
+		ar& ARCHIVE_NVP(Name);
+		ar& ARCHIVE_NVP(Health);
+		ar& ARCHIVE_NVP(Attack);
+		ar& ARCHIVE_NVP(Defense);
+		ar& ARCHIVE_NVP(Speed);
+		ar& ARCHIVE_NVP(MagicPower);
+		ar& ARCHIVE_NVP(Strength);
+		ar& ARCHIVE_NVP(Image);
+		ar& ARCHIVE_NVP(StartingEquipment);
+		ar& ARCHIVE_NVP(StartingSkills);
+		ar& ARCHIVE_NVP(Motto);
+	}
 };
 
 struct Hero : TileObject
 {
-	using TileObject::TileObject;
-	virtual std::string Name() const override { return "Hero"; }
-	virtual std::string Image() const override { return "obj/heroes/barbarian"; }
+	HeroClass const* Class = nullptr;
+
+	Hero(Map* pm, ivec2 at, HeroClass const* klass) : TileObject(pm, at), Class(klass) {}
+
+	virtual std::string Name() const override { return Class->Name; }
+	virtual std::string Image() const override { return Class->Image; }
 	virtual bool BlocksMovement() const override { return true; }
+	virtual ObjectZ Z() const override { return ObjectZ::Heroes; }
 };
 
 struct Door : TileObject
 {
 	using TileObject::TileObject;
 	uint32_t Locked = 0;
-	virtual std::string Name() const  override { return "Door"; }
+	virtual std::string Name() const override { return "Door"; }
+	virtual ObjectZ Z() const override { return ObjectZ::Furniture; }
 };
 
 struct Stairs : TileObject
 {
 	Stairs(Map* pm, ivec2 at) : TileObject(pm, at) { Size = { 2,2 }; }
 	virtual std::string Image() const override { return "obj/floorobjs/stairway"; }
-	virtual std::string Name() const  override { return "Stairs"; }
+	virtual std::string Name() const override { return "Stairs"; }
+	virtual ObjectZ Z() const override { return ObjectZ::Floor; }
 };
 
 struct Trap : TileObject
 {
 	using TileObject::TileObject;
 	bool Sprung = false;
-	virtual std::string Name() const  override { return "Trap"; }
+	virtual std::string Name() const override { return "Trap"; }
 	virtual std::string Image() const override { return "obj/traps/pit"; }
+	virtual ObjectZ Z() const override { return ObjectZ::Floor; }
+};
+
+struct ItemClass
+{
+	std::string Name;
+	int Cost;
+	std::string Image;
+	std::vector<int> Requirements;
+	std::vector<std::string> Powers;
+	std::vector<std::string> Traits;
+	std::string Fluff;
+};
+
+struct WeaponClass : ItemClass
+{
+	//WeaponType Type;
+	//AmmoType Ammo;
+	//int AmmoStart;
+	int Damage;
+	//DamageType DamageType;
+	int Range = 1;
+	bool Diagonal = false;
 };
 
 struct Item : TileObject
 {
 	using TileObject::TileObject;
-	virtual std::string Name() const  override { return "Item"; }
+	
+	ItemClass const* Class = nullptr;
+
+	virtual std::string Name() const override { return "Item"; }
 	virtual std::string Image() const override { return "obj/treasure"; }
+	virtual ObjectZ Z() const override { return ObjectZ::Items; }
 };
 
 struct Trigger : TileObject
 {
 	using TileObject::TileObject;
-	virtual std::string Name() const  override { return "Trigger"; }
+
+	virtual bool Visible() const { return false; }
+	virtual std::string Name() const override { return "Trigger"; }
+	virtual ObjectZ Z() const override { return ObjectZ::Floor; }
 };
 
 struct RoomTile
@@ -264,6 +355,9 @@ private:
 	TimingSystem mTiming{ al_get_time };
 	AllegroInput mInput{ mReporter };
 	ICamera mCamera;
+	vec2 mCameraTarget{};
+	float mCameraSpeed = 15.0f;
+	bool mCameraFocus = true;
 	PanZoomer mPanZoomer{ mInput, mCamera };
 	AllegroImGuiDebugger mDebugger;
 
@@ -280,6 +374,32 @@ private:
 
 	Map mCurrentMap;
 	TileObject* mPlayer = nullptr;
+
+	std::map<std::string, HeroClass, std::less<>> mHeroClasses;
+	std::map<std::string, MonsterClass, std::less<>> mMonsterClasses;
+	std::map<std::string, ItemClass, std::less<>> mItemClasses;
+	std::map<std::string, WeaponClass, std::less<>> mWeaponClasses;
+
+	template <typename T>
+	void LoadClasses(path from_file, std::map<std::string, T, std::less<>>& map)
+	{
+		std::ifstream file{ from_file };
+		try
+		{
+			json csv = LoadCSV(file);
+			for (auto& row : csv)
+			{
+				archive::JsonArchiver archiver{ mReporter, row };
+				auto& klass = map[(std::string)archiver.CurrentObject->at("Name")];
+				klass.Archive(archiver);
+			}
+		}
+		catch (Reporter& e)
+		{
+			e.AdditionalInfo("InFile", from_file.string());
+			e.Perform();
+		}
+	}
 
 	std::map<std::string, ALLEGRO_BITMAP*, std::less<>> mImages;
 };

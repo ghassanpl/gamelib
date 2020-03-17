@@ -82,9 +82,10 @@ namespace gamelib
 		auto player = GetPlayer(of_input.Player);
 		if (!player)
 		{
-			ErrorReporter.Warning("Player not found for input")
+			ErrorReporter.NewWarning("Player not found for input")
 				.Value("PlayerID", of_input.Player)
-				.Value("ActionID", of_input.ActionID);
+				.Value("ActionID", of_input.ActionID)
+				.Perform();
 			return {};
 		}
 
@@ -106,9 +107,10 @@ namespace gamelib
 		auto player = GetPlayer(of_input.Player);
 		if (!player)
 		{
-			ErrorReporter.Warning("Player not found for input")
+			ErrorReporter.NewWarning("Player not found for input")
 				.Value("PlayerID", of_input.Player)
-				.Value("ActionID", of_input.ActionID);
+				.Value("ActionID", of_input.ActionID)
+				.Perform();
 			return {};
 		}
 

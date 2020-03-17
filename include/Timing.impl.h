@@ -17,7 +17,7 @@ namespace gamelib
 
 	inline void TimingSystem::Pause(bool pause)
 	{
-		if (mPaused = pause)
+		if ((mPaused = pause))
 			mPausedTime = mCurrentTime;
 	}
 

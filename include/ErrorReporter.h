@@ -27,8 +27,7 @@ namespace gamelib
 		std::vector<std::pair<std::string, std::string>> AdditionalInfoLines;
 
 		Reporter(IErrorReporter const& errep, ReportType type);
-		~Reporter();
-
+		
 		template <typename... ARGS>
 		Reporter& MessageLine(std::string_view fmt, ARGS&&... args)
 		{
@@ -48,6 +47,8 @@ namespace gamelib
 			AdditionalInfo(name, "{}", std::forward<ARG>(val));
 			return *this;
 		}
+
+		void Perform();
 	};
 
 	struct IErrorReporter
@@ -55,7 +56,7 @@ namespace gamelib
 		virtual ~IErrorReporter() = default;
 
 		template <typename... ARGS>
-		Reporter Error(std::string_view fmt, ARGS&&... args) const
+		Reporter NewError(std::string_view fmt, ARGS&&... args) const
 		{
 			Reporter result{ *this, ReportType::Error };
 			result.MessageLine(fmt, std::forward<ARGS>(args)...);
@@ -63,11 +64,29 @@ namespace gamelib
 		}
 
 		template <typename... ARGS>
-		Reporter Warning(std::string_view fmt, ARGS&&... args) const
+		Reporter NewWarning(std::string_view fmt, ARGS&&... args) const
 		{
 			Reporter result{ *this, ReportType::Warning };
 			result.MessageLine(fmt, std::forward<ARGS>(args)...);
 			return result;
+		}
+
+		template <typename... ARGS>
+		void Error(std::string_view fmt, ARGS&&... args) const
+		{
+			NewError(fmt, std::forward<ARGS>(args)...).Perform();
+		}
+
+		template <typename... ARGS>
+		void Warning(std::string_view fmt, ARGS&&... args) const
+		{
+			NewWarning(fmt, std::forward<ARGS>(args)...).Perform();
+		}
+
+		template <typename... ARGS>
+		void ThrowError(std::string_view fmt, ARGS&&... args) const
+		{
+			throw NewError(fmt, std::forward<ARGS>(args)...);
 		}
 
 		virtual void PerformReport(Reporter const& holder) const;

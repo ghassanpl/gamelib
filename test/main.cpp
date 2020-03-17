@@ -18,7 +18,6 @@ int main()
 	Game game;
 	game.Init();
 	game.Load();
-	game.UpdateCamera();
 	game.Start();
 	game.Loop();
 	game.Shutdown();
