@@ -8,9 +8,13 @@ ALLEGRO_USTR_INFO ToAllegro(std::string_view str)
 	return result;
 }
 
-void Map::BuildRoom(irec2 const& room)
+void Map::BuildRoom(irec2 const& room, ivec2 door_pos, Direction door_dir)
 {
 	NavGrid.SetBlocking(room, { WallBlocks::Passage, WallBlocks::Sight }, true);
+	auto door = SpawnObject<Door>(door_pos);
+	door->WallPosition = door_dir;
+	if (auto tile = RoomGrid.At(door_pos + ToVector(door_dir)))
+		tile->Objects.insert(door);
 }
 
 void Map::DetermineVisibility(vec2 from_position)
@@ -123,24 +127,24 @@ void Game::Load()
 	});
 
 	LoadClasses("data/stats/heroes.csv", mHeroClasses);
+	LoadClasses("data/stats/monsters.csv", mMonsterClasses);
 
 	mCurrentMap.RoomGrid.ForEach([&](ivec2 pos) {
 		auto tile = mCurrentMap.RoomGrid.At(pos);
 		tile->Bg = mImages[fmt::format("floors/floor{}", random::IntegerRange(RNG, 0, 9))];
 		tile->RotationFlags = random::IntegerRange(RNG, 0, 15);
 	});
-	//mCurrentMap.BuildRoom(irec2::from_size(1, 1, 4, 3));
+	mCurrentMap.BuildRoom(irec2::from_size(1, 1, 4, 3), { 2,1 }, Direction::Up);
 	//mCurrentMap.BuildRoom(irec2::from_size(5, 1, 4, 3));
 	//mCurrentMap.BuildRoom(irec2::from_size(1, 4, 4, 5));
 	//mCurrentMap.NavGrid.SetBlocksPassage({ 2,0 }, { 2,1 }, false);
 
-	mCurrentMap.SpawnObject<Stairs>({ 0,0 });
+	mCurrentMap.SpawnObject<Stairs>({ 1,1 });
 
-	mPlayer = mCurrentMap.SpawnObject<Hero>({ 0,0 }, &mHeroClasses["Warrior"]);
+	mPlayer = mCurrentMap.SpawnObject<Hero>({ 1,1 }, mHeroClasses["Warrior"]);
 
 	mCurrentMap.SpawnObject<Furniture>({ 3,3 });
-	mCurrentMap.SpawnObject<Monster>({ 4,3 });
-	mCurrentMap.SpawnObject<Door>({ 5,3 });
+	mCurrentMap.SpawnObject<Monster>({ 4,3 }, mMonsterClasses["Goblin Guard"]);
 	mCurrentMap.SpawnObject<Trigger>({ 3,4 });
 	mCurrentMap.SpawnObject<Trap>({ 4,4 });
 	mCurrentMap.SpawnObject<Item>({ 5,4 });
@@ -233,14 +237,17 @@ void Game::Update()
 		if (mCurrentMap.NavGrid.WasSeen(mouse_tile_pos))
 		{
 			name_at = "Floor";
+
+			if (mCurrentMap.NavGrid.Visible(mouse_tile_pos))
+			{
+				for (auto& object : mCurrentMap.RoomGrid.At(mouse_tile_pos)->Objects)
+				{
+					if (object->Visible())
+						name_at = object->Name();
+				}
+			}
 		}
 		
-		for (auto& object : mCurrentMap.RoomGrid.At(mouse_tile_pos)->Objects)
-		{
-			if (object->Visible())
-				name_at = object->Name();
-		}
-
 		mTileDescription.AddParagraph(name_at);
 
 		if (IsNeighbor(mouse_tile_pos, mPlayer->Position()) && !mCurrentMap.NavGrid.BlocksPassage(mouse_tile_pos, mPlayer->Position()))
@@ -298,94 +305,68 @@ void Game::Render()
 
 	al_use_transform(&mCamera.GetTransform());
 
+	const auto wall_color = ToAllegro(Colors::White);
+
 	/// Floors
-	constexpr float half_tile_size = tile_width / 2;
-	for (int y = 0; y < mCurrentMap.RoomGrid.Height(); y++)
-	{
-		auto yp = y * tile_width;
-		for (int x = 0; x < mCurrentMap.RoomGrid.Width(); x++)
-		{
-			if (!mCurrentMap.NavGrid.WasSeen({ x, y })) continue;
+	ForEachVisibleTile([&](ivec2 pos, RoomTile* tile, vec2 world_pos) {
+		if (!mCurrentMap.NavGrid.WasSeen(pos)) return;
 
-			auto xp = x * tile_width;
-			auto tile = mCurrentMap.RoomGrid.At(x, y);
-			al_draw_rotated_bitmap(tile->Bg, half_tile_size, half_tile_size, xp + half_tile_size, yp + half_tile_size, glm::radians((tile->RotationFlags >> 2) * 90.0f), tile->RotationFlags & 3);
-		}
-	}
+		al_draw_rotated_bitmap(tile->Bg, half_tile_size, half_tile_size, world_pos.x + half_tile_size, world_pos.y + half_tile_size, glm::radians((tile->RotationFlags >> 2) * 90.0f), tile->RotationFlags & 3);
+	});
 
-	/// Objects
-
+	/// Sub-wall objects
 	std::vector<TileObject*> obj_to_draw;
 
-	for (int y = 0; y < mCurrentMap.RoomGrid.Height(); y++)
-	{
-		auto yp = y * tile_width;
-		for (int x = 0; x < mCurrentMap.RoomGrid.Width(); x++)
+	ForEachVisibleTile([&](ivec2 pos, RoomTile* tile, vec2 world_pos) {
+		obj_to_draw.clear();
+
+		for (auto obj : tile->Objects)
 		{
-			if (!mCurrentMap.NavGrid.WasSeen({ x, y })) continue;
-
-			auto xp = x * tile_width;
-			auto tile = mCurrentMap.RoomGrid.At(x, y);
-
-			obj_to_draw.clear();
-
-			for (auto obj : tile->Objects)
-			{
-				if (!obj->Visible()) continue;
-				obj_to_draw.push_back(obj);
-			}
-
-			std::sort(obj_to_draw.begin(), obj_to_draw.end(), [](TileObject* a, TileObject* b) { return a->Z() < b->Z(); });
-			for (auto obj : obj_to_draw)
-			{
-				const auto obj_origin_pos = obj->Position();
-				const auto obj_offset = ivec2{ x,y } - obj_origin_pos;
-
-				al_draw_tinted_scaled_rotated_bitmap_region(
-					obj->Texture,
-					obj_offset.x * tile_width, obj_offset.y * tile_width, tile_width, tile_width,
-					ToAllegro(Colors::White), 
-					half_tile_size, half_tile_size, xp + half_tile_size, yp + half_tile_size, 1.0f, 1.0f, 
-					glm::radians((obj->RotationFlags >> 2) * 90.0f), obj->RotationFlags & 3
-				);
-			}
+			if (!obj->Visible() || obj->Position() != pos || obj->Z() >= ObjectZ::Walls)
+				continue;
+			obj_to_draw.push_back(obj);
 		}
-	}
+
+		std::sort(obj_to_draw.begin(), obj_to_draw.end(), [](TileObject* a, TileObject* b) { return a->Z() < b->Z(); });
+		DrawObjects(obj_to_draw, pos);
+	});
 
 	/// Walls
-	const auto wall_color = ToAllegro(Colors::White);
-	constexpr auto wall_width = 10;
-	constexpr auto shadow_size = 20;
-	for (int y = 0; y < mCurrentMap.RoomGrid.Height(); y++)
-	{
-		auto yp = y * tile_width;
-		for (int x = 0; x < mCurrentMap.RoomGrid.Width(); x++)
-		{
-			if (!mCurrentMap.NavGrid.WasSeen({ x, y })) continue;
+	ForEachVisibleTile([&](ivec2 pos, RoomTile* tile, vec2 world_pos) {
+		if (!mCurrentMap.NavGrid.WasSeen(pos))
+			return;
 
-			auto xp = x * tile_width;
-			auto adj = mCurrentMap.NavGrid.At(x, y)->BlocksWall(WallBlocks::Passage);
-			if (adj.is_set(Direction::Left)) al_draw_line(xp, yp - wall_width / 2, xp, yp + tile_width + wall_width / 2, wall_color, wall_width);
-			if (adj.is_set(Direction::Up)) al_draw_line(xp - wall_width / 2, yp, xp + tile_width + wall_width / 2, yp, wall_color, wall_width);
-			if (adj.is_set(Direction::Right)) al_draw_line(xp + tile_width, yp, xp + tile_width, yp + tile_width, wall_color, wall_width);
-			if (adj.is_set(Direction::Down)) al_draw_line(xp - wall_width / 2, yp + tile_width, xp + tile_width + wall_width / 2, yp + tile_width, wall_color, wall_width);
+		auto adj = mCurrentMap.NavGrid.At(pos)->BlocksWall(WallBlocks::Passage);
+		if (adj.is_set(Direction::Left)) al_draw_line(world_pos.x, world_pos.y - wall_width / 2, world_pos.x, world_pos.y + tile_width + wall_width / 2, wall_color, wall_width);
+		if (adj.is_set(Direction::Up)) al_draw_line(world_pos.x - wall_width / 2, world_pos.y, world_pos.x + tile_width + wall_width / 2, world_pos.y, wall_color, wall_width);
+		if (adj.is_set(Direction::Right)) al_draw_line(world_pos.x + tile_width, world_pos.y, world_pos.x + tile_width, world_pos.y + tile_width, wall_color, wall_width);
+		if (adj.is_set(Direction::Down)) al_draw_line(world_pos.x - wall_width / 2, world_pos.y + tile_width, world_pos.x + tile_width + wall_width / 2, world_pos.y + tile_width, wall_color, wall_width);
+	});
+
+	/// Above-wall objects
+	ForEachVisibleTile([&](ivec2 pos, RoomTile* tile, vec2 world_pos) {
+		obj_to_draw.clear();
+
+		for (auto obj : tile->Objects)
+		{
+			if (!obj->Visible() || obj->Position() != pos || obj->Z() < ObjectZ::Walls)
+				continue;
+			obj_to_draw.push_back(obj);
 		}
-	}
+
+		std::sort(obj_to_draw.begin(), obj_to_draw.end(), [](TileObject* a, TileObject* b) { return a->Z() < b->Z(); });
+		DrawObjects(obj_to_draw, pos);
+	});
 
 	static constexpr auto half_black = Colors::GetBlack(0.6f);
-	for (int y = 0; y < mCurrentMap.RoomGrid.Height(); y++)
-	{
-		auto yp = y * tile_width;
-		for (int x = 0; x < mCurrentMap.RoomGrid.Width(); x++)
-		{
-			auto xp = x * tile_width;
-			if (!mCurrentMap.NavGrid.Visible({ x, y }))
-			{
-				al_draw_filled_rectangle(xp, yp, xp + tile_width, yp + tile_width, ToAllegro(half_black));
-			}
-		}
-	}
-
+	
+	/// Never seen or hidden
+	ForEachVisibleTile([&](ivec2 pos, RoomTile* tile, vec2 world_pos) {
+		if (!mCurrentMap.NavGrid.WasSeen(pos))
+			al_draw_filled_rectangle(world_pos.x, world_pos.y, world_pos.x + tile_width, world_pos.y + tile_width, ToAllegro(Colors::Black));
+		else if (!mCurrentMap.NavGrid.Visible(pos))
+			al_draw_filled_rectangle(world_pos.x, world_pos.y, world_pos.x + tile_width, world_pos.y + tile_width, ToAllegro(half_black));
+	});
 	/// Mouse selection
 	auto select = mCurrentMap.RoomGrid.RectForTile(GetMouseTilePosition(), tile_size);
 	al_draw_filled_rounded_rectangle(select.p1.x, select.p1.y, select.p2.x, select.p2.y, 4.0f, 4.0f, ToAllegro(Colors::GetWhite(0.5f)));
@@ -414,6 +395,7 @@ void Game::UpdateCamera()
 bool Game::CanMoveIn(Direction move_dir)
 {
 	const auto target_pos = mPlayer->Position() + ToVector(move_dir);
+
 	return CanMoveTo(target_pos);
 }
 
@@ -453,6 +435,23 @@ void Game::AddCommand(InputID input, std::string_view text, std::function<void()
 		.Input = input,
 		.Func = std::move(func)
 	});
+}
+
+void Game::DrawObjects(gsl::span<TileObject* const> objects, ivec2 pos)
+{
+	for (auto obj : objects)
+	{
+		vec2 gfx_offset = { 0, 0 };
+		if (obj->WallPosition != Direction::None)
+			gfx_offset = vec2{ ToVector(obj->WallPosition) } *half_tile_size;
+
+		al_draw_tinted_scaled_rotated_bitmap(
+			obj->Texture,
+			ToAllegro(Colors::White),
+			half_tile_size, half_tile_size, float(pos.x) * tile_width + half_tile_size + gfx_offset.x, float(pos.y) * tile_width + half_tile_size + gfx_offset.y, 1.0f, 1.0f,
+			glm::radians((obj->RotationFlags >> 2) * 90.0f), obj->RotationFlags & 3
+		);
+	}
 }
 
 void Game::Shutdown()

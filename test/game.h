@@ -50,6 +50,7 @@ enum class ObjectZ
 	Items,
 	Monsters,
 	Heroes,
+	Walls,
 
 	Ceiling = 100,
 };
@@ -105,23 +106,39 @@ struct MonsterClass
 	int Damage = 1;
 	int Speed = 3;
 	int XP = 1;
-	std::vector<std::string> Abilities;
+	std::map<std::string, std::string> Abilities;
 	std::vector<std::string> Traits;
-	std::vector<std::string> Barks;
+	//std::vector<std::string> Barks;
+	std::string Barks;
+
+	template<class Archive>
+	void Archive(Archive& ar)
+	{
+		ar& ARCHIVE_NVP(Name);
+		ar& ARCHIVE_NVP(Image);
+		ar& ARCHIVE_NVP(Health);
+		ar& ARCHIVE_NVP(Attack);
+		ar& ARCHIVE_NVP(Defense);
+		ar& ARCHIVE_NVP(Damage);
+		ar& ARCHIVE_NVP(Speed);
+		ar& ARCHIVE_NVP(XP);
+		ar& ARCHIVE_NVP(Abilities);
+		ar& ARCHIVE_NVP(Traits);
+		ar& ARCHIVE_NVP(Barks);
+	}
 };
 
 struct Monster : TileObject
 {
-	using TileObject::TileObject;
+	Monster(Map* pm, ivec2 at, MonsterClass const& klass) : TileObject(pm, at), Class(&klass) {}
 
 	MonsterClass const* Class = nullptr;
 
 	virtual bool BlocksMovement() const override { return true; }
-	virtual std::string Name() const override { return "Monster"; }
-	virtual std::string Image() const override { return "obj/monsters/goblin"; }
+	virtual std::string Name() const override { return Class->Name; }
+	virtual std::string Image() const override { return Class->Image; }
 
 	virtual ObjectZ Z() const override { return ObjectZ::Monsters; }
-
 };
 
 struct HeroClass
@@ -159,7 +176,7 @@ struct Hero : TileObject
 {
 	HeroClass const* Class = nullptr;
 
-	Hero(Map* pm, ivec2 at, HeroClass const* klass) : TileObject(pm, at), Class(klass) {}
+	Hero(Map* pm, ivec2 at, HeroClass const& klass) : TileObject(pm, at), Class(&klass) {}
 
 	virtual std::string Name() const override { return Class->Name; }
 	virtual std::string Image() const override { return Class->Image; }
@@ -172,7 +189,8 @@ struct Door : TileObject
 	using TileObject::TileObject;
 	uint32_t Locked = 0;
 	virtual std::string Name() const override { return "Door"; }
-	virtual ObjectZ Z() const override { return ObjectZ::Furniture; }
+	virtual std::string Image() const override { return "obj/doors/stone_closed"; }
+	virtual ObjectZ Z() const override { return ObjectZ::Walls; }
 };
 
 struct Stairs : TileObject
@@ -244,6 +262,9 @@ struct RoomTile
 
 constexpr float tile_width = 128;
 constexpr vec2 tile_size = { tile_width, tile_width };
+constexpr float half_tile_size = tile_width / 2;
+constexpr auto wall_width = 10;
+constexpr auto shadow_size = 20;
 
 struct Map
 {
@@ -268,7 +289,7 @@ struct Map
 		return (T*)ptr;
 	}
 
-	void BuildRoom(irec2 const& room);
+	void BuildRoom(irec2 const& room, ivec2 door_pos, Direction door_dir);
 
 	void DetermineVisibility(vec2 from_position);
 
@@ -346,6 +367,22 @@ private:
 	auto GetMouseTilePosition() const { return mCurrentMap.RoomGrid.WorldPositionToTilePosition(GetMouseWorldPosition(), tile_size); }
 	auto GetMouseTile() { return mCurrentMap.RoomGrid.At(GetMouseTilePosition()); }
 
+	void DrawObjects(gsl::span<TileObject* const> objects, ivec2 pos);
+
+	template <typename FUNC>
+	void ForEachVisibleTile(FUNC&& func)
+	{
+		for (int y = 0; y < mCurrentMap.RoomGrid.Height(); y++)
+		{
+			for (int x = 0; x < mCurrentMap.RoomGrid.Width(); x++)
+			{
+				auto pos = ivec2{ x, y };
+				auto tile = mCurrentMap.RoomGrid.At(pos);
+				func(pos, tile, vec2(pos) * tile_width);
+			}
+		}
+	}
+
 	ALLEGRO_DISPLAY* mDisplay = nullptr;
 	ALLEGRO_EVENT_QUEUE* mQueue = nullptr;
 	rec2 mScreenRect{};
@@ -384,6 +421,9 @@ private:
 	void LoadClasses(path from_file, std::map<std::string, T, std::less<>>& map)
 	{
 		std::ifstream file{ from_file };
+		if (file.peek() == 0xEF) /// FUCK UTF8 BOMS
+			file.ignore(3);
+
 		try
 		{
 			json csv = LoadCSV(file);

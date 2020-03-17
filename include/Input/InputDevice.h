@@ -3,7 +3,6 @@
 #include "../Common.h"
 #include "../Includes/EnumFlags.h"
 #include "../Includes/GLM.h"
-#include <gsl/span>
 #include <vector>
 #include <string>
 

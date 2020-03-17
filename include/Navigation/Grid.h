@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Squares.h"
-#include <gsl/span>
 #include <vector>
 
 namespace gamelib::squares

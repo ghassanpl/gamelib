@@ -5,7 +5,6 @@
 #include <allegro5/allegro_font.h>
 #include "../Includes/GLM.h"
 #include "../Colors.h"
-#include <gsl/span>
 #include <vector>
 #include <functional>
 #include <optional>

@@ -2,7 +2,6 @@
 #include <chrono>
 #include <thread>
 #include <array>
-#include <gsl/span>
 #include <iostream>
 #include "../include/Includes/Assuming.h"
 
