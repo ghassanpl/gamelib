@@ -62,8 +62,8 @@ namespace gamelib::squares
 			if constexpr (ghassanpl::is_flag_set(FLAGS, IterationFlags::WithSelf))
 				Apply<ONLY_VALID>(of, func);
 
-			neighbor_bitmap.for_each([this, of, &func]() {
-				Apply<ONLY_VALID>(of + ToVector(Direction::v), func);
+			neighbor_bitmap.for_each([this, of, &func](Direction d) {
+				Apply<ONLY_VALID>(of + ToVector(d), func);
 			});
 		}
 		else
@@ -71,8 +71,8 @@ namespace gamelib::squares
 			if constexpr (ghassanpl::is_flag_set(FLAGS, IterationFlags::WithSelf))
 				if (auto ret = Apply<ONLY_VALID>(of, func)) return ret;
 
-			return neighbor_bitmap.for_each([this, of, &func]() {
-				return Apply<ONLY_VALID>(of + ToVector(Direction::v), func);
+			return neighbor_bitmap.for_each([this, of, &func](Direction d) {
+				return Apply<ONLY_VALID>(of + ToVector(d), func);
 			});
 		}
 	}

@@ -4,6 +4,7 @@
 #include "Includes/Allegro.h"
 #include "Includes/EnumFlags.h"
 #include "Transformable.h"
+#include <string>
 
 struct ALLEGRO_BITMAP;
 

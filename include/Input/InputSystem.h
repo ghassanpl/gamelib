@@ -10,8 +10,8 @@ union ALLEGRO_EVENT;
 
 namespace gamelib
 {
-	using InputID = int;
-	inline constexpr InputID InvalidInput = 0x5F5F5F5F;
+	using InputID = std::string;
+	inline static const InputID InvalidInput = {};
 
 	struct IDebugger;
 
@@ -45,8 +45,6 @@ namespace gamelib
 
 			Input() = default;
 			Input(InputID id, PlayerID player = {}) : ActionID(id), Player(player) {}
-			template <typename T, typename = std::enable_if_t<std::is_enum_v<T>>>
-			Input(T id, PlayerID player = {}) : ActionID((InputID)id), Player(player) {}
 
 #ifndef __clang__
 			auto operator<=>(Input const& other) const noexcept = default;
@@ -132,7 +130,7 @@ namespace gamelib
 		struct PlayerInformation
 		{
 			PlayerID ID = {};
-			std::map<int, std::vector<Mapping>> Mappings;
+			std::map<InputID, std::vector<Mapping>> Mappings;
 			std::vector<InputDeviceIndex> BoundDeviceIDs;
 		};
 

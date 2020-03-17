@@ -10,13 +10,28 @@ namespace gamelib
 {
 	using namespace string_ops;
 
+	void Page::SetImageResolver(std::function<ALLEGRO_BITMAP* (std::string_view)> resolver)
+	{
+		mImageResolver = [resolver = std::move(resolver)](std::string_view name) {
+			auto bmp = resolver(name);
+			if (!bmp) return ALLEGRO_GLYPH{};
+			return ALLEGRO_GLYPH{
+				.bitmap = bmp,
+				.w = al_get_bitmap_width(bmp),
+				.h = al_get_bitmap_height(bmp),
+				.advance = al_get_bitmap_height(bmp),
+			};
+		};
+		mNeedsReflow = true;
+	}
+
 	void Page::AddParagraph(std::string_view str)
 	{
 		Paragraph* current_paragraph = nullptr;
 		std::vector<Style> style_stack;
-		size_t index = 0;
+		size_t index = mGlyphs.size();
 
-		current_paragraph = &mParagraphs.emplace_back(0);
+		current_paragraph = &mParagraphs.emplace_back(index);
 		style_stack.push_back(mDefaultStyle);
 
 		char32_t prev_cp = 0, cp = consume_utf8(str);
@@ -55,6 +70,7 @@ namespace gamelib
 						const auto original_size = vec2{ glyph.Glyph.w, glyph.Glyph.h };
 						const auto ratio = line_height / original_size.y;
 						glyph.Bounds.set_size(original_size * ratio);
+						glyph.Glyph.advance = std::round(glyph.Glyph.advance * ratio);
 						index++;
 					}
 					else

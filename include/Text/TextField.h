@@ -18,7 +18,7 @@ namespace gamelib
 		rec2 Bounds{};
 		ALLEGRO_GLYPH Glyph;
 		char32_t Codepoint = 0;
-		ALLEGRO_COLOR Color;
+		ALLEGRO_COLOR Color{ 1,1,1,1 };
 		float LineHeight = 0;
 	};
 
@@ -64,6 +64,7 @@ namespace gamelib
 		Style const& GetDefaultStyle() const { return mDefaultStyle; }
 
 		void SetImageResolver(std::function<ALLEGRO_GLYPH(std::string_view)> resolver) { mImageResolver = resolver; mNeedsReflow = true; }
+		void SetImageResolver(std::function<ALLEGRO_BITMAP* (std::string_view)> resolver);
 		void SetFontResolver(std::function<ALLEGRO_FONT*(std::string_view)> resolver) { mFontResolver = resolver; mNeedsReflow = true; }
 
 		void Clear()

@@ -39,25 +39,108 @@ using namespace gamelib::squares;
 
 struct Map;
 
+/*
+struct ObjectType
+{
+	std::string Name;
+	ObjectClass Class;
+	ALLEGRO_BITMAP* Texture = nullptr;
+	uvec2 BaseSize{ 1,1 };
+};
+
+enum class ObjectFlags
+{
+	CustomFlags = 32
+};
+*/
 struct TileObject
 {
 	TileObject(Map* pm, ivec2 at) : mParentMap(pm), mPosition(at) {}
+	virtual ~TileObject() = default;
 
 	Color Tint = Colors::White;
-	uvec2 Size{ 1,1 };
+	ivec2 Size{ 1,1 };
 	Direction WallPosition = Direction::None;
-	ALLEGRO_BITMAP* Texture = nullptr;
+	//enum_flags<ObjectFlags> Flags;
 	int RotationFlags = 0;
+
+	ALLEGRO_BITMAP* Texture;
 
 	Map* ParentMap() const { return mParentMap; }
 	ivec2 Position() const { return mPosition; }
 
 	void MoveTo(ivec2 pos);
 
+	virtual std::string Name() const { return "[object]"; }
+	virtual std::string Image() const { return "error"; }
+
+	virtual bool Visible() const { return true; }
+	virtual bool BlocksMovement() const { return false; }
+
 protected:
 
 	Map* mParentMap = nullptr;
 	ivec2 mPosition{};
+};
+
+struct Furniture : TileObject
+{
+	using TileObject::TileObject;
+	bool Searched = false;
+	virtual bool BlocksMovement() const override { return true; }
+	virtual std::string Name() const  override{ return "Furniture"; }
+	virtual std::string Image() const override { return "obj/furniture/rubble"; }
+};
+
+struct Monster : TileObject
+{
+	using TileObject::TileObject;
+	virtual bool BlocksMovement() const override { return true; }
+	virtual std::string Name() const  override { return "Monster"; }
+	virtual std::string Image() const override { return "obj/monsters/goblin"; }
+};
+
+struct Hero : TileObject
+{
+	using TileObject::TileObject;
+	virtual std::string Name() const override { return "Hero"; }
+	virtual std::string Image() const override { return "obj/heroes/barbarian"; }
+	virtual bool BlocksMovement() const override { return true; }
+};
+
+struct Door : TileObject
+{
+	using TileObject::TileObject;
+	uint32_t Locked = 0;
+	virtual std::string Name() const  override { return "Door"; }
+};
+
+struct Stairs : TileObject
+{
+	Stairs(Map* pm, ivec2 at) : TileObject(pm, at) { Size = { 2,2 }; }
+	virtual std::string Image() const override { return "obj/floorobjs/stairway"; }
+	virtual std::string Name() const  override { return "Stairs"; }
+};
+
+struct Trap : TileObject
+{
+	using TileObject::TileObject;
+	bool Sprung = false;
+	virtual std::string Name() const  override { return "Trap"; }
+	virtual std::string Image() const override { return "obj/traps/pit"; }
+};
+
+struct Item : TileObject
+{
+	using TileObject::TileObject;
+	virtual std::string Name() const  override { return "Item"; }
+	virtual std::string Image() const override { return "obj/treasure"; }
+};
+
+struct Trigger : TileObject
+{
+	using TileObject::TileObject;
+	virtual std::string Name() const  override { return "Trigger"; }
 };
 
 struct RoomTile
@@ -86,13 +169,15 @@ struct Map
 		if (!RoomGrid.IsValid(pos)) return nullptr;
 
 		auto obj = std::make_unique<T>(this, pos, std::forward<ARGS>(args)...);
-		auto ptr = obj.get();
-		RoomGrid.At(pos)->Objects.insert(ptr);
+		auto ptr = (TileObject*)obj.get();
+		for (int x = 0; x < ptr->Size.x; x++)
+			for (int y = 0; y < ptr->Size.y; y++)
+				RoomGrid.At(pos + ivec2{x, y})->Objects.insert(ptr);
 		Objects.push_back(std::move(obj));
-		return ptr;
+		return (T*)ptr;
 	}
 
-	void BuildRoom(irec2 const& room, ALLEGRO_BITMAP* bg);
+	void BuildRoom(irec2 const& room);
 
 	void DetermineVisibility(vec2 from_position);
 
@@ -103,9 +188,9 @@ struct Game
 {
 	void Init();
 
-	ALLEGRO_BITMAP* tiles[7];
-	std::map<InputID, ALLEGRO_BITMAP*> input_gfx;
-	ALLEGRO_BITMAP* characters[4]{};
+	//ALLEGRO_BITMAP* tiles[7];
+	std::map<InputID, ALLEGRO_BITMAP*, std::less<>> input_gfx;
+	//ALLEGRO_BITMAP* characters[4]{};
 
 	void Load();
 
@@ -123,7 +208,7 @@ struct Game
 
 	void Render();
 
-	void UpdateCamera();;
+	void UpdateCamera();
 	
 	template <typename... ARGS>
 	void DrawText(ALLEGRO_FONT* font, vec2 position, Color const& color, Color const& background_color, HorizontalAlign align, std::string_view format, ARGS&&... args)
@@ -151,6 +236,8 @@ struct Game
 
 private:
 
+	bool CanMoveIn(Direction move_dir);
+	bool CanMoveTo(ivec2 pos);
 	void MovePlayer(Direction move_dir);
 
 	struct Command
@@ -170,7 +257,7 @@ private:
 
 	ALLEGRO_DISPLAY* mDisplay = nullptr;
 	ALLEGRO_EVENT_QUEUE* mQueue = nullptr;
-	ivec2 mScreenSize{};
+	rec2 mScreenRect{};
 	ALLEGRO_FONT* mFont = nullptr;
 
 	IErrorReporter mReporter;
@@ -193,4 +280,6 @@ private:
 
 	Map mCurrentMap;
 	TileObject* mPlayer = nullptr;
+
+	std::map<std::string, ALLEGRO_BITMAP*, std::less<>> mImages;
 };

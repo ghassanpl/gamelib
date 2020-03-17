@@ -16,7 +16,7 @@ namespace gamelib
 		float MinThrowSpeed = 0;
 		double ZoomSpeed = 100;
 
-		PanZoomer(IInputSystem& input, ICamera& camera, int grab_input, int zoom_input, int position)
+		PanZoomer(IInputSystem& input, ICamera& camera, InputID grab_input, InputID zoom_input, InputID position)
 			: Input(input), Camera(camera), GrabInput(grab_input), ZoomInput(zoom_input), PositionInput(position)
 		{
 

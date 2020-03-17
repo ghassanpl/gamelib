@@ -29,7 +29,7 @@ namespace gamelib
 		mPlayers[to_input.Player].Mappings[to_input.ActionID].push_back(Mapping{ of_device, {physical_button, InvalidDeviceInputID} });
 	}
 
-	bool IInputSystem::IsButtonPressed(int input_id)
+	bool IInputSystem::IsButtonPressed(InputID input_id)
 	{
 		if (mPlayers.empty()) return false;
 
@@ -53,7 +53,7 @@ namespace gamelib
 		return GetMouse()->GetInputStateDigital((DeviceInputID)but);
 	}
 
-	bool IInputSystem::WasButtonPressed(int input_id)
+	bool IInputSystem::WasButtonPressed(InputID input_id)
 	{
 		if (mPlayers.empty()) return false;
 

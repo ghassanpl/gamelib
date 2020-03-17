@@ -7,13 +7,9 @@ ALLEGRO_USTR_INFO ToAllegro(std::string_view str)
 	return result;
 }
 
-void Map::BuildRoom(irec2 const& room, ALLEGRO_BITMAP* bg)
+void Map::BuildRoom(irec2 const& room)
 {
 	NavGrid.SetBlocking(room, { WallBlocks::Passage, WallBlocks::Sight }, true);
-	RoomGrid.ForEachInRect(room, [this, bg](ivec2 pos) {
-		auto tile = RoomGrid.At(pos);
-		tile->Bg = bg;
-		});
 }
 
 void Map::DetermineVisibility(vec2 from_position)
@@ -43,7 +39,7 @@ Map::Map()
 	NavGrid.Reset(26, 19);
 	NavGrid.BuildWalls<ghassanpl::flag_bits(BlockNavigationGrid::IterationFlags::OnlyValid)>([&](ivec2 from, ivec2 to) {
 		return NavGrid.IsValid(to) ? enum_flags<WallBlocks>{} : enum_flags<WallBlocks>::all(WallBlocks::Sight);
-		});
+	});
 }
 
 void Game::Init()
@@ -64,7 +60,7 @@ void Game::Init()
 
 	ImGui::Allegro::Init(mDisplay);
 
-	mScreenSize = ivec2{ al_get_display_width(mDisplay), al_get_display_height(mDisplay) };
+	mScreenRect = rec2::from_size(0, 0, al_get_display_width(mDisplay), al_get_display_height(mDisplay));
 
 	al_register_event_source(mQueue, al_get_keyboard_event_source());
 	al_register_event_source(mQueue, al_get_mouse_event_source());
@@ -80,61 +76,78 @@ void Game::Init()
 	//al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA);
 
 	mInput.Init();
-	mInput.MapKeyAndButton('up', KeyboardKey::W, XboxGamepadButton::Up);
-	mInput.MapKeyAndButton('down', KeyboardKey::S, XboxGamepadButton::Down);
-	mInput.MapKeyAndButton('left', KeyboardKey::A, XboxGamepadButton::Left);
-	mInput.MapKeyAndButton('righ', KeyboardKey::D, XboxGamepadButton::Right);
-	mInput.MapMouse(MouseButton::Left, 'act');
-	mInput.MapMouse(MouseButton::Right, 'exam');
-	mInput.MapMouse(MouseButton::Middle, 'addi');
+	mInput.MapKeyAndButton("up", KeyboardKey::W, XboxGamepadButton::Up);
+	mInput.MapKeyAndButton("down", KeyboardKey::S, XboxGamepadButton::Down);
+	mInput.MapKeyAndButton("left", KeyboardKey::A, XboxGamepadButton::Left);
+	mInput.MapKeyAndButton("right", KeyboardKey::D, XboxGamepadButton::Right);
+	mInput.MapMouse(MouseButton::Left, "act");
+	mInput.MapMouse(MouseButton::Right, "examine");
+	mInput.MapMouse(MouseButton::Middle, "additional");
 
 	al_identity_transform(&mUICamera);
 	mCamera.SetFromDisplay(mDisplay);
-
 }
 
 void Game::Load()
 {
-	mFont = al_load_ttf_font("data/fonts/plantin_regular.ttf", 36, ALLEGRO_NO_PREMULTIPLIED_ALPHA);
+	mFont = al_load_ttf_font("data/fonts/plantin_regular.ttf", 24, ALLEGRO_NO_PREMULTIPLIED_ALPHA);
 	mFontHeight = al_get_font_line_height(mFont);
 
-	mTileDescription.SetBounds(rec2::from_size(16, 16, 300, 200));
+	mTileDescription.SetBounds(rec2::from_size(16, 16, mScreenRect.width() -32, 128));
 	mTileDescription.SetDefaultStyle({ .Font = mFont });
 
-	tiles[0] = al_load_bitmap("data/tile.png");
-	tiles[1] = al_load_bitmap("data/tile2.png");
-	tiles[2] = al_load_bitmap("data/tile3.png");
-	tiles[3] = al_load_bitmap("data/tile4.png");
-	tiles[4] = al_load_bitmap("data/green.png");
-	tiles[5] = al_load_bitmap("data/beige.png");
-	tiles[6] = al_load_bitmap("data/yellow.png");
+	auto gfx_path = std::filesystem::path{ "data/gfx" };
+	for (auto it = std::filesystem::recursive_directory_iterator{ gfx_path }; it != std::filesystem::recursive_directory_iterator{}; ++it)
+	{
+		auto path = it->path();
+		if (path.extension() == ".png")
+		{
+			auto bitmap = al_load_bitmap(path.string().c_str());
+			path = std::filesystem::relative(path, gfx_path);
+			path.replace_extension();
+			mImages[path.generic_string()] = bitmap;
+		}
+	}
 
-	input_gfx['up'] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_W.png");
-	input_gfx['down'] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_S.png");
-	input_gfx['left'] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_A.png");
-	input_gfx['righ'] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_D.png");
-	input_gfx['act'] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_Mouse_Left.png");
-	input_gfx['exam'] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_Mouse_Right.png");
-	input_gfx['addi'] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_Mouse_Middle.png");
+	input_gfx["up"] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_W.png");
+	input_gfx["down"] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_S.png");
+	input_gfx["left"] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_A.png");
+	input_gfx["right"] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_D.png");
+	input_gfx["act"] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_Mouse_Left.png");
+	input_gfx["examine"] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_Mouse_Right.png");
+	input_gfx["additional"] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_Mouse_Middle.png");
 
-	mTileDescription.SetImageResolver([](std::string_view name) {
-
+	mTileDescription.SetImageResolver([&](std::string_view name) {
+		if (auto it = input_gfx.find(name); it != input_gfx.end())
+			return it->second;
+		return (ALLEGRO_BITMAP*)nullptr;
 	});
-
-	characters[0] = al_load_bitmap("data/barbarian_shadow.png");
 
 	mCurrentMap.RoomGrid.ForEach([&](ivec2 pos) {
 		auto tile = mCurrentMap.RoomGrid.At(pos);
-		tile->Bg = tiles[random::IntegerRange(RNG, 0, 3)];
+		tile->Bg = mImages[fmt::format("floors/floor{}", random::IntegerRange(RNG, 0, 9))];
 		tile->RotationFlags = random::IntegerRange(RNG, 0, 15);
-		});
-	mCurrentMap.BuildRoom(irec2::from_size(1, 1, 4, 3), tiles[4]);
-	mCurrentMap.BuildRoom(irec2::from_size(5, 1, 4, 3), tiles[5]);
-	mCurrentMap.BuildRoom(irec2::from_size(1, 4, 4, 5), tiles[6]);
-	mCurrentMap.NavGrid.SetBlocksPassage({ 2,0 }, { 2,1 }, false);
+	});
+	//mCurrentMap.BuildRoom(irec2::from_size(1, 1, 4, 3));
+	//mCurrentMap.BuildRoom(irec2::from_size(5, 1, 4, 3));
+	//mCurrentMap.BuildRoom(irec2::from_size(1, 4, 4, 5));
+	//mCurrentMap.NavGrid.SetBlocksPassage({ 2,0 }, { 2,1 }, false);
 
-	mPlayer = mCurrentMap.SpawnObject<TileObject>({ 0,0 });
-	mPlayer->Texture = characters[0];
+	mCurrentMap.SpawnObject<Stairs>({ 0,0 });
+
+	mPlayer = mCurrentMap.SpawnObject<Hero>({ 0,0 });
+
+	mCurrentMap.SpawnObject<Furniture>({ 3,3 });
+	mCurrentMap.SpawnObject<Monster>({ 4,3 });
+	mCurrentMap.SpawnObject<Door>({ 5,3 });
+	mCurrentMap.SpawnObject<Trigger>({ 3,4 });
+	mCurrentMap.SpawnObject<Trap>({ 4,4 });
+	mCurrentMap.SpawnObject<Item>({ 5,4 });
+
+	for (auto& obj : mCurrentMap.Objects)
+	{
+		obj->Texture = mImages[obj->Image()];
+	}
 }
 
 void Game::Start()
@@ -192,23 +205,56 @@ void Game::Update()
 	mPanZoomer.Update(mDT);
 
 	Direction move_dir = Direction::None;
-	if (mInput.WasButtonPressed('up'))
+	if (mInput.WasButtonPressed("up"))
 		MovePlayer(Direction::Up);
-	else if (mInput.WasButtonPressed('left'))
+	else if (mInput.WasButtonPressed("left"))
 		MovePlayer(Direction::Left);
-	else if (mInput.WasButtonPressed('righ'))
+	else if (mInput.WasButtonPressed("right"))
 		MovePlayer(Direction::Right);
-	else if (mInput.WasButtonPressed('down'))
+	else if (mInput.WasButtonPressed("down"))
 		MovePlayer(Direction::Down);
 
 	auto mouse_tile_pos = GetMouseTilePosition();
 	mTileDescription.Clear();
-	if (mCurrentMap->IsValid(mouse_tile_pos) && IsNeighbor(mouse_tile_pos, mPlayer->Position()) && !mCurrentMap.NavGrid.BlocksPassage(mouse_tile_pos, mPlayer->Position()))
+	if (mCurrentMap->IsValid(mouse_tile_pos))
 	{
-		AddCommand('act', "Move", [&] {
-			MovePlayer(ToDirection(mouse_tile_pos - mPlayer->Position()));
-		});
+		std::string name_at = "Unknown";
+		if (mCurrentMap.NavGrid.WasSeen(mouse_tile_pos))
+		{
+			name_at = "Floor";
+		}
+		
+		for (auto& object : mCurrentMap.RoomGrid.At(mouse_tile_pos)->Objects)
+		{
+			name_at = object->Name();
+		}
+
+		mTileDescription.AddParagraph(name_at);
+
+		if (IsNeighbor(mouse_tile_pos, mPlayer->Position()) && !mCurrentMap.NavGrid.BlocksPassage(mouse_tile_pos, mPlayer->Position()))
+		{
+			if (CanMoveTo(mouse_tile_pos))
+			{
+				AddCommand("act", "Move", [&] {
+					MovePlayer(ToDirection(mouse_tile_pos - mPlayer->Position()));
+				});
+			}
+
+			if (!name_at.empty())
+			{
+				AddCommand("examine", "Examine " + name_at, [&] {
+
+				});
+			}
+		}
 	}
+	else
+		mTileDescription.AddParagraph("Unknown");
+
+	std::string input_line;
+	for (auto& cmd : mCommands)
+		input_line += fmt::format("<img={}>{}", cmd.Input, cmd.Text);
+	mTileDescription.AddParagraph(input_line);
 
 	for (auto& cmd : mCommands)
 	{
@@ -268,13 +314,21 @@ void Game::Render()
 
 			for (auto obj : tile->Objects)
 			{
-				al_draw_rotated_bitmap(obj->Texture, half_tile_size, half_tile_size, xp + half_tile_size, yp + half_tile_size, glm::radians((obj->RotationFlags >> 2) * 90.0f), obj->RotationFlags & 3);
+				const auto obj_origin_pos = obj->Position();
+				const auto obj_offset = ivec2{ x,y } - obj_origin_pos;
+
+				al_draw_tinted_scaled_rotated_bitmap_region(
+					obj->Texture,
+					obj_offset.x * tile_width, obj_offset.y * tile_width, tile_width, tile_width,
+					ToAllegro(Colors::White), half_tile_size, half_tile_size,
+					xp + half_tile_size, yp + half_tile_size, 1.0f, 1.0f, glm::radians((obj->RotationFlags >> 2) * 90.0f), obj->RotationFlags & 3
+				);
 			}
 		}
 	}
 
 	/// Walls
-	const auto wall_color = ToAllegro(Colors::LightGray);
+	const auto wall_color = ToAllegro(Colors::White);
 	constexpr auto wall_width = 10;
 	constexpr auto shadow_size = 20;
 	for (int y = 0; y < mCurrentMap.RoomGrid.Height(); y++)
@@ -290,11 +344,10 @@ void Game::Render()
 			if (adj.is_set(Direction::Up)) al_draw_line(xp - wall_width / 2, yp, xp + tile_width + wall_width / 2, yp, wall_color, wall_width);
 			if (adj.is_set(Direction::Right)) al_draw_line(xp + tile_width, yp, xp + tile_width, yp + tile_width, wall_color, wall_width);
 			if (adj.is_set(Direction::Down)) al_draw_line(xp - wall_width / 2, yp + tile_width, xp + tile_width + wall_width / 2, yp + tile_width, wall_color, wall_width);
-
 		}
 	}
 
-	static constexpr auto half_black = Colors::GetBlack(0.5f);
+	static constexpr auto half_black = Colors::GetBlack(0.6f);
 	for (int y = 0; y < mCurrentMap.RoomGrid.Height(); y++)
 	{
 		auto yp = y * tile_width;
@@ -309,29 +362,16 @@ void Game::Render()
 	}
 
 	/// Mouse selection
-	if (auto tile = GetMouseTile())
-	{
-		auto select = mCurrentMap.RoomGrid.RectForTile(GetMouseTilePosition(), tile_size);
-		//al_draw_rectangle(select.p1.x, select.p1.y, select.p2.x, select.p2.y, ToAllegro(Colors::Red), 6);
-		al_draw_filled_rounded_rectangle(select.p1.x, select.p1.y, select.p2.x, select.p2.y, 4.0f, 4.0f, ToAllegro(Colors::GetWhite(0.5f)));
-		al_draw_rounded_rectangle(select.p1.x, select.p1.y, select.p2.x, select.p2.y, 4.0f, 4.0f, ToAllegro(Colors::Magenta), 4.0f);
-	}
+	auto select = mCurrentMap.RoomGrid.RectForTile(GetMouseTilePosition(), tile_size);
+	al_draw_filled_rounded_rectangle(select.p1.x, select.p1.y, select.p2.x, select.p2.y, 4.0f, 4.0f, ToAllegro(Colors::GetWhite(0.5f)));
+	al_draw_rounded_rectangle(select.p1.x, select.p1.y, select.p2.x, select.p2.y, 4.0f, 4.0f, ToAllegro(Colors::Magenta), 4.0f);
 
 	al_use_transform(&mUICamera);
 
+	auto bounds = mTileDescription.GetBounds().grown(8);
+	al_draw_filled_rounded_rectangle(bounds.p1.x, bounds.p1.y, bounds.p2.x, bounds.p2.y, 4.0f, 4.0f, ToAllegro(Colors::GetBlack(0.75f)));
+	al_draw_rounded_rectangle(bounds.p1.x, bounds.p1.y, bounds.p2.x, bounds.p2.y, 4.0f, 4.0f, ToAllegro(Colors::White), 4.0f);
 	mTileDescription.Draw();
-	/*
-	rec2 selected_tile_desc_rect = rec2::from_size(16, 16, 300, 200);
-	float y = 0;
-	al_draw_filled_rounded_rectangle(selected_tile_desc_rect.p1.x, selected_tile_desc_rect.p1.y, selected_tile_desc_rect.p2.x, selected_tile_desc_rect.p2.y, 4.0f, 4.0f, ToAllegro(half_black));
-	for (auto& cmd : mCommands)
-	{
-		auto glyph = input_gfx[cmd.Input];
-		if (glyph) al_draw_scaled_bitmap(glyph, 0, 0, 100, 100, selected_tile_desc_rect.p1.x, selected_tile_desc_rect.p1.y, mFontHeight, mFontHeight, 0);
-		DrawText(mFont, { selected_tile_desc_rect.p1.x + mFontHeight, selected_tile_desc_rect.p1.x + y }, Colors::White, Colors::Transparent, HorizontalAlign::Left, "{}", cmd.Text);
-		y += mFontHeight + 4;
-	}
-	*/
 
 	ImGui::Allegro::Render(mDisplay);
 
@@ -345,10 +385,34 @@ void Game::UpdateCamera()
 	mCurrentMap.DetermineVisibility(player_world_pos);
 }
 
+bool Game::CanMoveIn(Direction move_dir)
+{
+	const auto target_pos = mPlayer->Position() + ToVector(move_dir);
+	return CanMoveTo(target_pos);
+}
+
+bool Game::CanMoveTo(ivec2 target_pos)
+{
+	if (!IsNeighbor(mPlayer->Position(), target_pos))
+		return false;
+
+	if (!mCurrentMap->IsValid(target_pos))
+		return false;
+
+	if (mCurrentMap.NavGrid.BlocksPassage(mPlayer->Position(), target_pos))
+		return false;
+
+	for (auto& obj : mCurrentMap->At(target_pos)->Objects)
+		if (obj->BlocksMovement())
+			return false;
+
+	return true;
+}
+
 void Game::MovePlayer(Direction move_dir)
 {
 	const auto target_pos = mPlayer->Position() + ToVector(move_dir);
-	if (!mCurrentMap.NavGrid.BlocksPassage(mPlayer->Position(), target_pos))
+	if (CanMoveIn(move_dir))
 	{
 		mPlayer->MoveTo(target_pos);
 
@@ -363,8 +427,6 @@ void Game::AddCommand(InputID input, std::string_view text, std::function<void()
 		.Input = input,
 		.Func = std::move(func)
 	});
-
-	mTileDescription.AddParagraph(fmt::format("<img={}> {}", (int)input, text));
 }
 
 void Game::Shutdown()
