@@ -46,13 +46,13 @@ namespace gamelib
 	template <typename T, typename A_T>
 	constexpr inline const T& Approach(T& current, const T dest, const A_T speed)
 	{
-		return current += (dest - current) * speed;
+		return current += (dest - current) * std::min(A_T(1), speed);
 	}
 
 	template <typename T, typename A_T>
 	constexpr inline const T& ApproachMax(T& current, const T dest, const A_T speed, const T max_change)
 	{
-		return current += glm::clamp(-max_change, max_change, (dest - current) * speed);
+		return current += glm::clamp(-max_change, max_change, (dest - current) * std::min(A_T(1), speed));
 	}
 
 	/// Linearly moves the current value towards the destination value, at the specified speed.

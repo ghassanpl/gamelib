@@ -40,6 +40,7 @@
 using namespace gamelib;
 using namespace gamelib::squares;
 
+struct Game;
 struct Map;
 
 enum class ObjectZ
@@ -80,6 +81,10 @@ struct TileObject
 
 	virtual bool Visible() const { return true; }
 	virtual bool BlocksMovement() const { return false; }
+
+	virtual bool TryBump(Game* game, Direction from) { return false; }
+	virtual bool EnteredTile(Game* game) { return false; }
+	virtual bool LeavingTile(Game* game) { return false; }
 
 protected:
 
@@ -188,9 +193,13 @@ struct Door : TileObject
 {
 	using TileObject::TileObject;
 	uint32_t Locked = 0;
+	bool Open = false;
 	virtual std::string Name() const override { return "Door"; }
 	virtual std::string Image() const override { return "obj/doors/stone_closed"; }
+	virtual std::string OpenImage() const { return "obj/doors/stone_open"; }
 	virtual ObjectZ Z() const override { return ObjectZ::Walls; }
+
+	virtual bool TryBump(Game* game, Direction from) override;
 };
 
 struct Stairs : TileObject
@@ -346,12 +355,15 @@ struct Game
 
 	void Shutdown();
 
+	void OpenDoor(Door* door);
+
 private:
 
-	bool CanMoveIn(Direction move_dir);
-	bool CanMoveTo(ivec2 pos);
-	void MovePlayer(Direction move_dir);
-
+	//bool CanMoveIn(Direction move_dir);
+	//bool CanMoveTo(ivec2 pos);
+	//void MovePlayer(Direction move_dir);
+	void DirectionAction(Direction dir);
+	
 	struct Command
 	{
 		std::string Text;
@@ -362,10 +374,6 @@ private:
 	std::vector<Command> mCommands;
 
 	void AddCommand(InputID input, std::string_view text, std::function<void()> func);
-
-	auto GetMouseWorldPosition() const { return mCamera.ScreenSpaceToWorldSpace(mInput.GetMousePosition()); }
-	auto GetMouseTilePosition() const { return mCurrentMap.RoomGrid.WorldPositionToTilePosition(GetMouseWorldPosition(), tile_size); }
-	auto GetMouseTile() { return mCurrentMap.RoomGrid.At(GetMouseTilePosition()); }
 
 	void DrawObjects(gsl::span<TileObject* const> objects, ivec2 pos);
 
@@ -442,4 +450,6 @@ private:
 	}
 
 	std::map<std::string, ALLEGRO_BITMAP*, std::less<>> mImages;
+
+	ALLEGRO_BITMAP* GetImage(std::string_view name) const;
 };

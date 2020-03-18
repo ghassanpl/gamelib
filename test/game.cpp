@@ -83,9 +83,6 @@ void Game::Init()
 	mInput.MapKeyAndButton("down", KeyboardKey::S, XboxGamepadButton::Down);
 	mInput.MapKeyAndButton("left", KeyboardKey::A, XboxGamepadButton::Left);
 	mInput.MapKeyAndButton("right", KeyboardKey::D, XboxGamepadButton::Right);
-	mInput.MapMouse(MouseButton::Left, "act");
-	mInput.MapMouse(MouseButton::Right, "search");
-	mInput.MapMouse(MouseButton::Middle, "additional");
 
 	al_identity_transform(&mUICamera);
 	mCamera.SetFromDisplay(mDisplay);
@@ -116,10 +113,7 @@ void Game::Load()
 	input_gfx["down"] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_S.png");
 	input_gfx["left"] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_A.png");
 	input_gfx["right"] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_D.png");
-	input_gfx["act"] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_Mouse_Left.png");
-	input_gfx["search"] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_Mouse_Right.png");
-	input_gfx["additional"] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_Mouse_Middle.png");
-
+	
 	mTileDescription.SetImageResolver([&](std::string_view name) {
 		if (auto it = input_gfx.find(name); it != input_gfx.end())
 			return it->second;
@@ -131,7 +125,7 @@ void Game::Load()
 
 	mCurrentMap.RoomGrid.ForEach([&](ivec2 pos) {
 		auto tile = mCurrentMap.RoomGrid.At(pos);
-		tile->Bg = mImages[fmt::format("floors/floor{}", random::IntegerRange(RNG, 0, 9))];
+		tile->Bg = GetImage(fmt::format("floors/floor{}", random::IntegerRange(RNG, 0, 9)));
 		tile->RotationFlags = random::IntegerRange(RNG, 0, 15);
 	});
 	mCurrentMap.BuildRoom(irec2::from_size(1, 1, 4, 3), { 2,1 }, Direction::Up);
@@ -151,7 +145,7 @@ void Game::Load()
 
 	for (auto& obj : mCurrentMap.Objects)
 	{
-		obj->Texture = mImages[obj->Image()];
+		obj->Texture = GetImage(obj->Image());
 	}
 }
 
@@ -215,79 +209,23 @@ void Game::Update()
 	if (mCameraFocus)
 	{
 		auto wc = mCamera.GetWorldCenter();
-		wc += ((mCameraTarget - wc) * (float)mDT) * mCameraSpeed;
+		Approach(wc, mCameraTarget, float(mDT * mCameraSpeed));
 		mCamera.SetWorldCenter(wc);
 	}
 
 	Direction move_dir = Direction::None;
 	if (mInput.WasButtonPressed("up"))
-		MovePlayer(Direction::Up);
+		DirectionAction(Direction::Up);
 	else if (mInput.WasButtonPressed("left"))
-		MovePlayer(Direction::Left);
+		DirectionAction(Direction::Left);
 	else if (mInput.WasButtonPressed("right"))
-		MovePlayer(Direction::Right);
+		DirectionAction(Direction::Right);
 	else if (mInput.WasButtonPressed("down"))
-		MovePlayer(Direction::Down);
-
-	auto mouse_tile_pos = GetMouseTilePosition();
-	mTileDescription.Clear();
-	if (mCurrentMap->IsValid(mouse_tile_pos))
-	{
-		std::string name_at = "Unknown";
-		if (mCurrentMap.NavGrid.WasSeen(mouse_tile_pos))
-		{
-			name_at = "Floor";
-
-			if (mCurrentMap.NavGrid.Visible(mouse_tile_pos))
-			{
-				for (auto& object : mCurrentMap.RoomGrid.At(mouse_tile_pos)->Objects)
-				{
-					if (object->Visible())
-						name_at = object->Name();
-				}
-			}
-		}
-		
-		mTileDescription.AddParagraph(name_at);
-
-		if (IsNeighbor(mouse_tile_pos, mPlayer->Position()) && !mCurrentMap.NavGrid.BlocksPassage(mouse_tile_pos, mPlayer->Position()))
-		{
-			if (CanMoveTo(mouse_tile_pos))
-			{
-				AddCommand("act", "Move", [&] {
-					MovePlayer(ToDirection(mouse_tile_pos - mPlayer->Position()));
-				});
-			}
-
-			if (!name_at.empty())
-			{
-				AddCommand("search", "Search " + name_at, [&] {
-
-				});
-			}
-		}
-	}
-	else
-		mTileDescription.AddParagraph("Unknown");
-
-	std::string input_line;
-	for (auto& cmd : mCommands)
-		input_line += fmt::format("<img={}>{}", cmd.Input, cmd.Text);
-	mTileDescription.AddParagraph(input_line);
-
-	for (auto& cmd : mCommands)
-	{
-		if (mInput.WasButtonPressed(cmd.Input))
-			cmd.Func();
-	}
-
+		DirectionAction(Direction::Down);
 }
 
 void Game::Debug()
 {
-	mDebugger.Value("Mouse World Pos", GetMouseWorldPosition());
-	mDebugger.Value("Mouse Tile Pos", GetMouseTilePosition());
-
 	if (ImGui::BeginTabBar("tabs"))
 	{
 		if (ImGui::BeginTabItem("Input"))
@@ -367,17 +305,8 @@ void Game::Render()
 		else if (!mCurrentMap.NavGrid.Visible(pos))
 			al_draw_filled_rectangle(world_pos.x, world_pos.y, world_pos.x + tile_width, world_pos.y + tile_width, ToAllegro(half_black));
 	});
-	/// Mouse selection
-	auto select = mCurrentMap.RoomGrid.RectForTile(GetMouseTilePosition(), tile_size);
-	al_draw_filled_rounded_rectangle(select.p1.x, select.p1.y, select.p2.x, select.p2.y, 4.0f, 4.0f, ToAllegro(Colors::GetWhite(0.5f)));
-	al_draw_rounded_rectangle(select.p1.x, select.p1.y, select.p2.x, select.p2.y, 4.0f, 4.0f, ToAllegro(Colors::Magenta), 4.0f);
 
 	al_use_transform(&mUICamera);
-
-	auto bounds = mTileDescription.GetBounds().grown(8);
-	al_draw_filled_rounded_rectangle(bounds.p1.x, bounds.p1.y, bounds.p2.x, bounds.p2.y, 4.0f, 4.0f, ToAllegro(Colors::GetBlack(0.75f)));
-	al_draw_rounded_rectangle(bounds.p1.x, bounds.p1.y, bounds.p2.x, bounds.p2.y, 4.0f, 4.0f, ToAllegro(Colors::White), 4.0f);
-	mTileDescription.Draw();
 
 	ImGui::Allegro::Render(mDisplay);
 
@@ -392,6 +321,7 @@ void Game::UpdateCamera()
 	mCurrentMap.DetermineVisibility(player_world_pos);
 }
 
+/*
 bool Game::CanMoveIn(Direction move_dir)
 {
 	const auto target_pos = mPlayer->Position() + ToVector(move_dir);
@@ -404,16 +334,6 @@ bool Game::CanMoveTo(ivec2 target_pos)
 	if (!IsNeighbor(mPlayer->Position(), target_pos))
 		return false;
 
-	if (!mCurrentMap->IsValid(target_pos))
-		return false;
-
-	if (mCurrentMap.NavGrid.BlocksPassage(mPlayer->Position(), target_pos))
-		return false;
-
-	for (auto& obj : mCurrentMap->At(target_pos)->Objects)
-		if (obj->BlocksMovement())
-			return false;
-
 	return true;
 }
 
@@ -425,6 +345,44 @@ void Game::MovePlayer(Direction move_dir)
 		mPlayer->MoveTo(target_pos);
 
 		UpdateCamera();
+	}
+}
+*/
+void Game::DirectionAction(Direction dir)
+{
+	const auto player_pos = mPlayer->Position();
+	const auto target_pos = player_pos + ToVector(dir);
+
+	/// Bump first
+
+	for (auto& obj : mCurrentMap->At(player_pos)->Objects)
+		if (obj->WallPosition == dir && obj->TryBump(this, dir))
+			return;
+	
+	if (!mCurrentMap->IsValid(target_pos))
+		return;
+
+	if (mCurrentMap.NavGrid.BlocksPassage(player_pos, target_pos))
+		return;
+
+	bool can_move = true;
+	for (auto& obj : mCurrentMap->At(target_pos)->Objects)
+		if (obj->BlocksMovement())
+		{
+			can_move = false;
+			if (obj->TryBump(this, dir))
+				return;
+		}
+
+	/// Then move
+	if (can_move)
+	{
+		mPlayer->MoveTo(target_pos);
+		UpdateCamera();
+
+		for (auto& obj : mCurrentMap.RoomGrid.At(mPlayer->Position())->Objects)
+			if (obj->EnteredTile(this))
+				return;
 	}
 }
 
@@ -454,6 +412,14 @@ void Game::DrawObjects(gsl::span<TileObject* const> objects, ivec2 pos)
 	}
 }
 
+ALLEGRO_BITMAP* Game::GetImage(std::string_view name) const
+{
+	auto it = mImages.find(name);
+	if (it == mImages.end())
+		mReporter.Error("Image '{}' not found", name);
+	return it->second;
+}
+
 void Game::Shutdown()
 {
 	ImGui::Allegro::Shutdown();
@@ -475,3 +441,31 @@ void TileObject::MoveTo(ivec2 pos)
 	mPosition = pos;
 	mParentMap->RoomGrid.At(mPosition)->Objects.insert(this);
 }
+
+bool Door::TryBump(Game* game, Direction from)
+{
+	if (!Open)
+	{
+		game->OpenDoor(this);
+		return true;
+	}
+	else
+		return false;
+}
+
+void Game::OpenDoor(Door* door)
+{
+	if (door->Locked)
+	{
+		/// TODO: Show locked message
+		return;
+	}
+
+	auto pos = door->Position();
+	auto dir = door->WallPosition;
+	mCurrentMap.NavGrid.SetBlocksPassage(pos, pos + ToVector(dir), false);
+	door->Texture = GetImage(door->OpenImage());
+	door->Open = true;
+
+	UpdateCamera();
+}	
