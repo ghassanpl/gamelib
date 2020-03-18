@@ -37,6 +37,9 @@
 #include <Serialization/CSV.h>
 #include <Debug/AllegroImGuiDebugger.h>
 
+#include <rsl/RSL.h>
+#include <rsl/ExecutionContext.h>
+
 using namespace gamelib;
 using namespace gamelib::squares;
 
@@ -146,6 +149,17 @@ struct Monster : TileObject
 	virtual std::string Image() const override { return Class->Image; }
 
 	virtual ObjectZ Z() const override { return ObjectZ::Monsters; }
+
+	bool CanSeePlayer() const;
+	bool CanAttackPlayer() const;
+	void AttackPlayer();
+	bool CanMoveTowardPlayer();
+	void MoveTowardPlayer();
+	void Wander();
+
+	void AITurn();
+
+	rsl::RCRef<rsl::Obj> AIObject{ nullptr };
 };
 
 struct HeroClass
@@ -418,6 +432,10 @@ private:
 	PanZoomer mPanZoomer{ mInput, mCamera };
 	AllegroImGuiDebugger mDebugger;
 
+	rsl::OSInterface mOSI;
+	rsl::Module mScriptModule{ mOSI };
+	rsl::ExecutionContext mMonsterAIContext{ mScriptModule };
+
 	bool mQuit = false;
 	double mDT = 0;
 
@@ -480,6 +498,12 @@ private:
 	typedef void(Game::*GameMode)(ModeAction);
 
 	GameMode mCurrentMode = &Game::ModePlayerMovement;
+
+	void DoModeAction(ModeAction action)
+	{
+		if (mCurrentMode)
+			(this->*mCurrentMode)(action);
+	}
 
 	void SwitchMode(GameMode mode);
 };

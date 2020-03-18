@@ -1,5 +1,6 @@
 #include "game.h"
 #include <fstream>
+#include <rsl/Structure.h>
 
 ALLEGRO_USTR_INFO ToAllegro(std::string_view str)
 {
@@ -109,6 +110,37 @@ void Game::Load()
 		}
 	}
 
+	for (auto it = std::filesystem::recursive_directory_iterator{ "data/scripts" }; it != std::filesystem::recursive_directory_iterator{}; ++it)
+	{
+		auto path = it->path();
+		if (path.extension() == ".rsl")
+		{
+			//mScriptModule
+			std::stringstream buffer;
+			std::ifstream srm{ path };
+			buffer << srm.rdbuf();
+			srm.close();
+
+			try
+			{
+				mScriptModule.Parse(buffer.str(), path.string());
+			}
+			catch (rsl::RSException& e)
+			{
+				mReporter.Error("Script error: {}", e.ToString());
+			}
+		}
+	}
+	
+	try
+	{
+		mScriptModule.Link();
+	}
+	catch (rsl::RSException& e)
+	{
+		mReporter.Error("Script error: {}", e.ToString());
+	}
+
 	mImages["input/up"] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_W.png");
 	mImages["input/down"] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_S.png");
 	mImages["input/left"] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_A.png");
@@ -136,10 +168,14 @@ void Game::Load()
 	mPlayer = mCurrentMap.SpawnObject<Hero>({ 1,1 }, mHeroClasses["Warrior"]);
 
 	mCurrentMap.SpawnObject<Furniture>({ 3,3 });
-	mCurrentMap.SpawnObject<Monster>({ 4,3 }, mMonsterClasses["Goblin Guard"]);
+	auto monster = mCurrentMap.SpawnObject<Monster>({ 4,3 }, mMonsterClasses["Goblin Guard"]);
 	mCurrentMap.SpawnObject<Trigger>({ 3,4 });
 	mCurrentMap.SpawnObject<Trap>({ 4,4 });
 	mCurrentMap.SpawnObject<Item>({ 5,4 });
+
+	auto ai = mScriptModule.FindClass("Monsters.GoblinGuardAI");
+	monster->AIObject = mMonsterAIContext.NewGC(ai);
+	//mMonsterAIContext.
 
 	for (auto& obj : mCurrentMap.Objects)
 	{
@@ -212,8 +248,7 @@ void Game::Update()
 		mCamera.SetWorldCenter(wc);
 	}
 
-	if (mCurrentMode)
-		(this->*mCurrentMode)(ModeAction::Update);
+	DoModeAction(ModeAction::Update);
 }
 
 void Game::Debug()
@@ -236,6 +271,7 @@ void Game::Render()
 	al_use_transform(&mCamera.GetTransform());
 
 	const auto wall_color = ToAllegro(Colors::White);
+	static constexpr auto half_black = Colors::GetBlack(0.6f);
 
 	/// Floors
 	ForEachVisibleTile([&](ivec2 pos, RoomTile* tile, vec2 world_pos) {
@@ -262,8 +298,6 @@ void Game::Render()
 	/// Above-wall objects
 	DrawObjects([](TileObject const* obj) { return obj->Z() < ObjectZ::Walls; });
 
-	static constexpr auto half_black = Colors::GetBlack(0.6f);
-	
 	/// Never seen or hidden
 	ForEachVisibleTile([&](ivec2 pos, RoomTile* tile, vec2 world_pos) {
 		if (!mCurrentMap.NavGrid.WasSeen(pos))
@@ -289,8 +323,7 @@ void Game::Render()
 		al_draw_scaled_bitmap(orb, 0, 0, 32, 32, 70 + i * 32, mScreenRect.height() - 40, 32, 32, 0);
 	}
 
-	if (mCurrentMode)
-		(this->*mCurrentMode)(ModeAction::UIDraw);
+	DoModeAction(ModeAction::UIDraw);
 
 	ImGui::Allegro::Render(mDisplay);
 
@@ -478,12 +511,10 @@ void Game::ModeStartTurn(ModeAction action)
 
 void Game::SwitchMode(GameMode mode)
 {
-	if (mCurrentMode)
-		(this->*mCurrentMode)(ModeAction::Leave);
+	DoModeAction(ModeAction::Leave);
 	mCurrentMode = mode;
 	mTiming.SetFlag("mode_entered");
-	if (mCurrentMode)
-		(this->*mCurrentMode)(ModeAction::Enter);
+	DoModeAction(ModeAction::Enter);
 }
 
 void Game::Shutdown()
@@ -535,3 +566,93 @@ void Game::OpenDoor(Door* door)
 
 	SpendAP();
 }	
+
+bool Monster::CanSeePlayer() const
+{
+	/// TODO: Last Player Position stuff
+	//return Game()->OurWorld->NavigationGrid().CanSee(Position(), Game()->CurrentPlayer->GetPosition(), true);
+	return false;
+}
+
+bool Monster::CanAttackPlayer() const
+{
+	/*
+	if (CanAttackDiagonally())
+	return IsSurrounding(Position(), Game()->CurrentPlayer->GetPosition());
+	else
+	return IsNeighbor(Position(), Game()->CurrentPlayer->GetPosition());
+	*/
+	return false;
+}
+
+void Monster::AttackPlayer()
+{
+
+}
+
+bool Monster::CanMoveTowardPlayer()
+{
+	//return Game()->CanEnter(GetPosition() + DirToPlayer());
+	return false;
+}
+
+void Monster::MoveTowardPlayer()
+{
+	//SetPosition(GetPosition() + DirToPlayer());
+}
+
+void Monster::Wander()
+{
+	/*
+	auto wander_pos = GetPosition() + Game()->GetRandomNeighbor();
+	if (Game()->CanEnter(wander_pos))
+	SetPosition(wander_pos);
+	*/
+}
+
+void Monster::AITurn()
+{
+	if (CanSeePlayer())
+	{
+		/// mLastSeenPlayerPosition = Game()->CurrentPlayer->GetPosition();
+		/// mLastSeenPlayerTime = Game()->WorldTime
+		if (CanAttackPlayer())
+			AttackPlayer();
+		else if (CanMoveTowardPlayer())
+			MoveTowardPlayer();
+	}
+	else
+		Wander();
+
+	/*
+	if (Health() < ScaredHealth())
+	{
+	if (CanRunAwayFromPlayer())
+	RunAwayFromPlayer(); /// NOTE: Different than MoveAwayFromPlayer
+	else if (CanAttackPlayer())
+	AttackPlayer();
+	}
+	else if (TooFarFromPlayer() and CanAttackPlayer() and CanMoveTowardPlayer())
+	{
+	if (Game()->WithProbability(ChargeProbability()))
+	MoveTowardPlayer();
+	else
+	AttackPlayer();
+	}
+	else if (TooCloseToPlayer() and CanAttackPlayer() and CanMoveAwayFromPlayer())
+	{
+	if (Game()->WithProbability(RetreatProbability()))
+	MoveAwayFromPlayer();
+	else
+	AttackPlayer();
+	}
+	else if (CanAttackPlayer())
+	AttackPlayer();
+	else if (TooFarFromPlayer() and CanMoveTowardPlayer())
+	MoveTowardPlayer();
+	else if (TooCloseToPlayer() and CanMoveAwayFromPlayer())
+	MoveAwayFromPlayer();
+	else
+	StandStill();
+	*/
+}

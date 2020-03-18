@@ -1,0 +1,21 @@
+namespace Monsters
+
+	class GoblinGuardAI
+
+		var monster = null
+
+		func DoAI()
+			if monster.CanSeePlayer() then
+				if monster.CanAttackPlayer() then
+					monster.AttackPlayer()
+				elseif (monster.CanMoveTowardPlayer())
+					monster.MoveTowardPlayer()
+				end
+			else
+				monster.Wander()
+			end
+		end
+		
+	end
+
+end
