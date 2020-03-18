@@ -81,6 +81,7 @@ struct TileObject
 
 	virtual bool Visible() const { return true; }
 	virtual bool BlocksMovement() const { return false; }
+	virtual bool ShowInFog() const { return true; }
 
 	virtual bool TryBump(Game* game, Direction from) { return false; }
 	virtual bool EnteredTile(Game* game) { return false; }
@@ -140,6 +141,7 @@ struct Monster : TileObject
 	MonsterClass const* Class = nullptr;
 
 	virtual bool BlocksMovement() const override { return true; }
+	virtual bool ShowInFog() const override { return false; }
 	virtual std::string Name() const override { return Class->Name; }
 	virtual std::string Image() const override { return Class->Image; }
 
@@ -252,6 +254,7 @@ struct Item : TileObject
 	virtual std::string Name() const override { return "Item"; }
 	virtual std::string Image() const override { return "obj/treasure"; }
 	virtual ObjectZ Z() const override { return ObjectZ::Items; }
+	virtual bool ShowInFog() const override { return false; }
 };
 
 struct Trigger : TileObject
@@ -382,7 +385,8 @@ private:
 
 	void SpendAP();
 
-	void DrawObjects(gsl::span<TileObject* const> objects, ivec2 pos);
+	/// `filter_out` returns TRUE if we should skip drawing this object
+	void DrawObjects(std::function<bool(TileObject*)> filter_out);
 
 	template <typename FUNC>
 	void ForEachVisibleTile(FUNC&& func)

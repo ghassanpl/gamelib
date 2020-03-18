@@ -245,21 +245,7 @@ void Game::Render()
 	});
 
 	/// Sub-wall objects
-	std::vector<TileObject*> obj_to_draw;
-
-	ForEachVisibleTile([&](ivec2 pos, RoomTile* tile, vec2 world_pos) {
-		obj_to_draw.clear();
-
-		for (auto obj : tile->Objects)
-		{
-			if (!obj->Visible() || obj->Position() != pos || obj->Z() >= ObjectZ::Walls)
-				continue;
-			obj_to_draw.push_back(obj);
-		}
-
-		std::sort(obj_to_draw.begin(), obj_to_draw.end(), [](TileObject* a, TileObject* b) { return a->Z() < b->Z(); });
-		DrawObjects(obj_to_draw, pos);
-	});
+	DrawObjects([](TileObject const* obj) { return obj->Z() >= ObjectZ::Walls; });
 
 	/// Walls
 	ForEachVisibleTile([&](ivec2 pos, RoomTile* tile, vec2 world_pos) {
@@ -274,19 +260,7 @@ void Game::Render()
 	});
 
 	/// Above-wall objects
-	ForEachVisibleTile([&](ivec2 pos, RoomTile* tile, vec2 world_pos) {
-		obj_to_draw.clear();
-
-		for (auto obj : tile->Objects)
-		{
-			if (!obj->Visible() || obj->Position() != pos || obj->Z() < ObjectZ::Walls)
-				continue;
-			obj_to_draw.push_back(obj);
-		}
-
-		std::sort(obj_to_draw.begin(), obj_to_draw.end(), [](TileObject* a, TileObject* b) { return a->Z() < b->Z(); });
-		DrawObjects(obj_to_draw, pos);
-	});
+	DrawObjects([](TileObject const* obj) { return obj->Z() < ObjectZ::Walls; });
 
 	static constexpr auto half_black = Colors::GetBlack(0.6f);
 	
@@ -331,33 +305,6 @@ void Game::UpdateCamera()
 	mCurrentMap.DetermineVisibility(player_world_pos);
 }
 
-/*
-bool Game::CanMoveIn(Direction move_dir)
-{
-	const auto target_pos = mPlayer->Position() + ToVector(move_dir);
-
-	return CanMoveTo(target_pos);
-}
-
-bool Game::CanMoveTo(ivec2 target_pos)
-{
-	if (!IsNeighbor(mPlayer->Position(), target_pos))
-		return false;
-
-	return true;
-}
-
-void Game::MovePlayer(Direction move_dir)
-{
-	const auto target_pos = mPlayer->Position() + ToVector(move_dir);
-	if (CanMoveIn(move_dir))
-	{
-		mPlayer->MoveTo(target_pos);
-
-		UpdateCamera();
-	}
-}
-*/
 void Game::DirectionAction(Direction dir)
 {
 	const auto player_pos = mPlayer->Position();
@@ -415,9 +362,37 @@ void Game::SpendAP()
 	}
 }
 
-void Game::DrawObjects(gsl::span<TileObject* const> objects, ivec2 pos)
+void Game::DrawObjects(std::function<bool(TileObject*)> filter)
 {
-	for (auto obj : objects)
+	std::vector<TileObject*> obj_to_draw;
+
+	ForEachVisibleTile([&, filter = std::move(filter)](ivec2 pos, RoomTile* tile, vec2 world_pos) {
+
+		for (auto obj : tile->Objects)
+		{
+			if (!obj->Visible() || obj->Position() != pos || filter(obj))
+				continue;
+
+			bool visible = obj->ShowInFog();
+			if (!visible)
+			{
+				for (int x = 0; x < obj->Size.x; x++)
+					for (int y = 0; y < obj->Size.y; y++)
+						if (mCurrentMap.NavGrid.Visible(pos + ivec2{ x, y }))
+						{
+							visible = true;
+							break;
+						}
+			}
+
+			if (visible)
+				obj_to_draw.push_back(obj);
+		}
+	});
+
+	std::sort(obj_to_draw.begin(), obj_to_draw.end(), [](TileObject* a, TileObject* b) { return a->Z() < b->Z(); });
+
+	for (auto obj : obj_to_draw)
 	{
 		vec2 gfx_offset = { 0, 0 };
 		if (obj->WallPosition != Direction::None)
@@ -426,7 +401,7 @@ void Game::DrawObjects(gsl::span<TileObject* const> objects, ivec2 pos)
 		al_draw_tinted_scaled_rotated_bitmap(
 			obj->Texture,
 			ToAllegro(Colors::White),
-			half_tile_size, half_tile_size, float(pos.x) * tile_width + half_tile_size + gfx_offset.x, float(pos.y) * tile_width + half_tile_size + gfx_offset.y, 1.0f, 1.0f,
+			half_tile_size, half_tile_size, float(obj->Position().x) * tile_width + half_tile_size + gfx_offset.x, float(obj->Position().y) * tile_width + half_tile_size + gfx_offset.y, 1.0f, 1.0f,
 			glm::radians((obj->RotationFlags >> 2) * 90.0f), obj->RotationFlags & 3
 		);
 	}
