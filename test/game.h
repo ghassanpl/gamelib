@@ -181,7 +181,9 @@ struct Hero : TileObject
 {
 	HeroClass const* Class = nullptr;
 
-	Hero(Map* pm, ivec2 at, HeroClass const& klass) : TileObject(pm, at), Class(&klass) {}
+	Hero(Map* pm, ivec2 at, HeroClass const& klass) : TileObject(pm, at), Class(&klass), AP(klass.Speed) {}
+
+	int AP = 0;
 
 	virtual std::string Name() const override { return Class->Name; }
 	virtual std::string Image() const override { return Class->Image; }
@@ -332,7 +334,7 @@ struct Game
 	void UpdateCamera();
 	
 	template <typename... ARGS>
-	void DrawText(ALLEGRO_FONT* font, vec2 position, Color const& color, Color const& background_color, HorizontalAlign align, std::string_view format, ARGS&&... args)
+	void DrawText(ALLEGRO_FONT* font, vec2 position, Color const& color, Color const& background_color, Align align, std::string_view format, ARGS&&... args)
 	{
 		auto str = fmt::format(format, std::forward<ARGS>(args)...);
 
@@ -342,14 +344,17 @@ struct Game
 		int x, y, w, h;
 		al_get_ustr_dimensions(font, buf, &x, &y, &w, &h);
 
-		position.x += AlignAxis((float)w, 0.0f, align);
+		position.x += AlignAxis((float)w, 0.0f, Horizontal(align));
+		position.y += AlignAxis((float)h, 0.0f, Vertical(align));
 
 		if (background_color.a != 0)
 		{
-			al_draw_filled_rectangle(x + position.x - 4, y + position.y - 4, x + position.x + w + 4, y + position.y + h + 4, ToAllegro(background_color));
+			const auto box_offset = std::max(h / 4, 4);
+			al_draw_filled_rectangle(x + position.x - box_offset, y + position.y - box_offset, x + position.x + w + box_offset, y + position.y + h + box_offset, ToAllegro(background_color));
 		}
 
-		al_draw_ustr(font, ToAllegro(Contrasting(color)), position.x + 1, position.y + 1, ALLEGRO_ALIGN_LEFT, buf);
+		const auto shadow_offset = std::max(h / 16, 1);
+		al_draw_ustr(font, ToAllegro(Contrasting(color)), position.x + shadow_offset, position.y + shadow_offset, ALLEGRO_ALIGN_LEFT, buf);
 		al_draw_ustr(font, ToAllegro(color), position.x, position.y, ALLEGRO_ALIGN_LEFT, buf);
 	}
 
@@ -375,6 +380,8 @@ private:
 
 	void AddCommand(InputID input, std::string_view text, std::function<void()> func);
 
+	void SpendAP();
+
 	void DrawObjects(gsl::span<TileObject* const> objects, ivec2 pos);
 
 	template <typename FUNC>
@@ -395,6 +402,7 @@ private:
 	ALLEGRO_EVENT_QUEUE* mQueue = nullptr;
 	rec2 mScreenRect{};
 	ALLEGRO_FONT* mFont = nullptr;
+	ALLEGRO_FONT* mBigFont = nullptr;
 
 	IErrorReporter mReporter;
 	TimingSystem mTiming{ al_get_time };
@@ -409,8 +417,6 @@ private:
 	bool mQuit = false;
 	double mDT = 0;
 
-	float mFontHeight;
-
 	ALLEGRO_TRANSFORM mUICamera{};
 
 	std::mt19937_64 RNG;
@@ -418,7 +424,7 @@ private:
 	Page mTileDescription;
 
 	Map mCurrentMap;
-	TileObject* mPlayer = nullptr;
+	Hero* mPlayer = nullptr;
 
 	std::map<std::string, HeroClass, std::less<>> mHeroClasses;
 	std::map<std::string, MonsterClass, std::less<>> mMonsterClasses;
@@ -452,4 +458,24 @@ private:
 	std::map<std::string, ALLEGRO_BITMAP*, std::less<>> mImages;
 
 	ALLEGRO_BITMAP* GetImage(std::string_view name) const;
+
+	enum class ModeAction
+	{
+		Enter,
+		Return,
+		Update,
+		UIDraw,
+		Suspend,
+		Leave,
+	};
+
+	void ModePlayerMovement(ModeAction action);
+	void ModeEndTurn(ModeAction action);
+	void ModeStartTurn(ModeAction action);
+
+	typedef void(Game::*GameMode)(ModeAction);
+
+	GameMode mCurrentMode = &Game::ModePlayerMovement;
+
+	void SwitchMode(GameMode mode);
 };

@@ -92,6 +92,19 @@ namespace gamelib
 		return 0;
 	}
 
+	inline double TimingSystem::FlagDelta(std::string_view name, seconds_t recurrence_time, bool use_frame_start_time)
+	{
+		if (auto it = mFlags.find(name); it != mFlags.end())
+		{
+			const auto current = (use_frame_start_time ? mCurrentTime : CurrentTime());
+			const auto time_since_flag = current - it->second;
+			const auto result = time_since_flag / recurrence_time;
+			it->second += int(result) * recurrence_time; /// replant the flag as close to current time as possible without messing up the future recurrence count
+			return std::fmod(result, 1.0);
+		}
+		return 0;
+	}
+
 	inline bool TimingSystem::FlagElapsedRestart(std::string_view name, seconds_t elapsed_time, bool use_frame_start_time)
 	{
 		if (auto it = mFlags.find(name); it != mFlags.end())

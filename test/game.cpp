@@ -91,7 +91,7 @@ void Game::Init()
 void Game::Load()
 {
 	mFont = al_load_ttf_font("data/fonts/plantin_regular.ttf", 24, ALLEGRO_NO_PREMULTIPLIED_ALPHA);
-	mFontHeight = al_get_font_line_height(mFont);
+	mBigFont = al_load_ttf_font("data/fonts/heroquest.ttf", 60, ALLEGRO_NO_PREMULTIPLIED_ALPHA);
 
 	mTileDescription.SetBounds(rec2::from_size(16, 16, mScreenRect.width() -32, 128));
 	mTileDescription.SetDefaultStyle({ .Font = mFont });
@@ -109,15 +109,13 @@ void Game::Load()
 		}
 	}
 
-	input_gfx["up"] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_W.png");
-	input_gfx["down"] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_S.png");
-	input_gfx["left"] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_A.png");
-	input_gfx["right"] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_D.png");
+	mImages["input/up"] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_W.png");
+	mImages["input/down"] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_S.png");
+	mImages["input/left"] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_A.png");
+	mImages["input/right"] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_D.png");
 	
 	mTileDescription.SetImageResolver([&](std::string_view name) {
-		if (auto it = input_gfx.find(name); it != input_gfx.end())
-			return it->second;
-		return (ALLEGRO_BITMAP*)nullptr;
+		return GetImage(name);
 	});
 
 	LoadClasses("data/stats/heroes.csv", mHeroClasses);
@@ -154,6 +152,7 @@ void Game::Start()
 	UpdateCamera();
 	mCamera.SetWorldCenter(mCameraTarget);
 	mTiming.Reset();
+	SwitchMode(&Game::ModePlayerMovement);
 }
 
 void Game::Loop()
@@ -213,15 +212,8 @@ void Game::Update()
 		mCamera.SetWorldCenter(wc);
 	}
 
-	Direction move_dir = Direction::None;
-	if (mInput.WasButtonPressed("up"))
-		DirectionAction(Direction::Up);
-	else if (mInput.WasButtonPressed("left"))
-		DirectionAction(Direction::Left);
-	else if (mInput.WasButtonPressed("right"))
-		DirectionAction(Direction::Right);
-	else if (mInput.WasButtonPressed("down"))
-		DirectionAction(Direction::Down);
+	if (mCurrentMode)
+		(this->*mCurrentMode)(ModeAction::Update);
 }
 
 void Game::Debug()
@@ -308,6 +300,24 @@ void Game::Render()
 
 	al_use_transform(&mUICamera);
 
+	al_draw_filled_rectangle(0, mScreenRect.height() - 50, mScreenRect.width(), mScreenRect.height(), ToAllegro(half_black));
+	DrawText(mFont, { 20, mScreenRect.height() - 40 }, Colors::White, Colors::Transparent, Align::LeftTop, "AP:");
+	const auto orb = GetImage("ui/orb322");
+	for (int i = 0; i < mPlayer->Class->Speed; i++)
+	{
+		if (i < mPlayer->AP)
+		{
+			if (mPlayer->AP == 1)
+				al_draw_filled_circle(70 + i * 32 + 16, (mScreenRect.height() - 40) + 16, 13, ToAllegro(vec4{ (float)TriangleWave(1.0, 0.0, 4.0, mTiming.RealTotalGameTime()), 0,0,1 }));
+			else
+				al_draw_filled_circle(70 + i * 32 + 16, (mScreenRect.height() - 40) + 16, 13, ToAllegro(Colors::DarkCyan));
+		}
+		al_draw_scaled_bitmap(orb, 0, 0, 32, 32, 70 + i * 32, mScreenRect.height() - 40, 32, 32, 0);
+	}
+
+	if (mCurrentMode)
+		(this->*mCurrentMode)(ModeAction::UIDraw);
+
 	ImGui::Allegro::Render(mDisplay);
 
 	al_flip_display();
@@ -378,7 +388,7 @@ void Game::DirectionAction(Direction dir)
 	if (can_move)
 	{
 		mPlayer->MoveTo(target_pos);
-		UpdateCamera();
+		SpendAP();
 
 		for (auto& obj : mCurrentMap.RoomGrid.At(mPlayer->Position())->Objects)
 			if (obj->EnteredTile(this))
@@ -393,6 +403,16 @@ void Game::AddCommand(InputID input, std::string_view text, std::function<void()
 		.Input = input,
 		.Func = std::move(func)
 	});
+}
+
+void Game::SpendAP()
+{
+	UpdateCamera();
+	mPlayer->AP--;
+	if (mPlayer->AP == 0)
+	{
+		SwitchMode(&Game::ModeEndTurn);
+	}
 }
 
 void Game::DrawObjects(gsl::span<TileObject* const> objects, ivec2 pos)
@@ -418,6 +438,77 @@ ALLEGRO_BITMAP* Game::GetImage(std::string_view name) const
 	if (it == mImages.end())
 		mReporter.Error("Image '{}' not found", name);
 	return it->second;
+}
+
+void Game::ModePlayerMovement(ModeAction action)
+{
+	switch (action)
+	{
+	case ModeAction::Update:
+		if (mInput.WasButtonPressed("up"))
+			DirectionAction(Direction::Up);
+		else if (mInput.WasButtonPressed("left"))
+			DirectionAction(Direction::Left);
+		else if (mInput.WasButtonPressed("right"))
+			DirectionAction(Direction::Right);
+		else if (mInput.WasButtonPressed("down"))
+			DirectionAction(Direction::Down);
+		break;
+	}
+}
+
+void Game::ModeEndTurn(ModeAction action)
+{
+	static constexpr seconds_t sign_time = 0.65;
+	switch (action)
+	{
+	case ModeAction::Update:
+		if (mTiming.TimeSinceFlag("mode_entered") >= sign_time)
+		{
+			mPlayer->AP = mPlayer->Class->Speed;
+			SwitchMode(&Game::ModeStartTurn);
+		}
+		break;
+	case ModeAction::UIDraw:
+	{
+		auto delta = std::pow(mTiming.FlagDelta("mode_entered", sign_time) * 2.0 - 1.0, 5);
+		DrawText(mBigFont, { mScreenRect.width() / 2.0f, (mScreenRect.height() / 2.0f) + mScreenRect.height() * delta }, Colors::Red, Colors::GetBlack(0.7f), Align::CenterMiddle,
+			"Evil Turn", mPlayer->AP);
+		break;
+	}
+	}
+}
+
+void Game::ModeStartTurn(ModeAction action)
+{
+	static constexpr seconds_t sign_time = 0.65;
+	switch (action)
+	{
+	case ModeAction::Update:
+		if (mTiming.TimeSinceFlag("mode_entered") >= sign_time)
+		{
+			mPlayer->AP = mPlayer->Class->Speed;
+			SwitchMode(&Game::ModePlayerMovement);
+		}
+		break;
+	case ModeAction::UIDraw:
+	{
+		auto delta = std::pow(mTiming.FlagDelta("mode_entered", sign_time) * 2.0 - 1.0, 5);
+		DrawText(mBigFont, { mScreenRect.width() / 2.0f, (mScreenRect.height() / 2.0f) + mScreenRect.height() * delta }, Colors::Green, Colors::GetBlack(0.7f), Align::CenterMiddle,
+			"Hero Turn", mPlayer->AP);
+		break;
+	}
+	}
+}
+
+void Game::SwitchMode(GameMode mode)
+{
+	if (mCurrentMode)
+		(this->*mCurrentMode)(ModeAction::Leave);
+	mCurrentMode = mode;
+	mTiming.SetFlag("mode_entered");
+	if (mCurrentMode)
+		(this->*mCurrentMode)(ModeAction::Enter);
 }
 
 void Game::Shutdown()
@@ -467,5 +558,5 @@ void Game::OpenDoor(Door* door)
 	door->Texture = GetImage(door->OpenImage());
 	door->Open = true;
 
-	UpdateCamera();
+	SpendAP();
 }	

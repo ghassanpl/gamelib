@@ -70,6 +70,10 @@ namespace gamelib
 		/// See: TimeSinceFlag
 		auto FlagRecurred(std::string_view name, seconds_t recurrence_time, bool use_frame_start_time = true) -> int;
 
+		/// Returns a value between 0 and 1 that specifies how far along the recurrence time we are
+		/// See: TimeSinceFlag
+		auto FlagDelta(std::string_view name, seconds_t recurrence_time, bool use_frame_start_time = true) -> double;
+
 		/// Returns whether the flag has overflowed the `elapsed_time` and resets the flag to the current moment (or start of frame, see TimeSinceFlag)
 		/// See: TimeSinceFlag
 		auto FlagElapsedRestart(std::string_view name, seconds_t elapsed_time, bool use_frame_start_time = true) -> bool;

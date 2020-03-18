@@ -36,10 +36,17 @@ namespace gamelib
 	/// TODO: Shake, Flicker (White noise)
 
 	/// Wave
-	template <typename B, typename V, typename S, typename T>
-	auto Wave(B start, V variance, S speed, T t)
+	template <typename P, typename V, typename S, typename T>
+	auto Wave(V amplitude, P phase_shift, S speed, T t)
 	{
-		return start + variance * glm::sin(speed*t*glm::pi());
+		return amplitude * glm::sin(phase_shift + speed*t*glm::pi());
+	}
+
+	template <typename P, typename V, typename S, typename T>
+	auto TriangleWave(V amplitude, P phase_shift, S speed, T t)
+	{
+		const auto x = T(1) - std::abs(std::fmod(t * speed - phase_shift, T(2)) - T(1));
+		return amplitude * x;
 	}
 
 	/// Smoothly moves the current value towards the destination value, at the specified speed.

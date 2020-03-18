@@ -9,7 +9,11 @@ namespace gamelib
 
 	namespace Colors
 	{
-#define DEF_COLOR(name, r, g, b) inline constexpr vec4 Get##name(float alpha) { return vec4{ float(r), float(g), float(b), alpha }; } inline constexpr vec4 name = Get##name(1.0f);
+#define DEF_COLOR(name, r, g, b) \
+	inline constexpr vec4 Get##name(float alpha) { return vec4{ float(r), float(g), float(b), alpha }; } \
+	inline constexpr vec4 name = Get##name(1.0f); \
+	inline constexpr vec4 GetDark##name(float alpha) { return vec4{ float(r) * 0.5f, float(g) * 0.5f, float(b) * 0.5f, alpha }; } \
+	inline constexpr vec4 Dark##name = GetDark##name(1.0f);
 		DEF_COLOR(Red, 1, 0, 0)
 		DEF_COLOR(Green, 0, 1, 0)
 		DEF_COLOR(Blue, 0, 0, 1)
@@ -22,8 +26,6 @@ namespace gamelib
 		DEF_COLOR(Grey, 0.5f, 0.5f, 0.5f)
 		DEF_COLOR(LightGray, 0.75f, 0.75f, 0.75f)
 		DEF_COLOR(LightGrey, 0.75f, 0.75f, 0.75f)
-		DEF_COLOR(DarkGray, 0.25f, 0.25f, 0.25f)
-		DEF_COLOR(DarkGrey, 0.25f, 0.25f, 0.25f)
 		inline constexpr vec4 Transparent = GetBlack(0.0f);
 		#undef DEF_COLOR
 	}
