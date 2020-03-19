@@ -39,6 +39,7 @@
 
 #include <rsl/RSL.h>
 #include <rsl/ExecutionContext.h>
+#include <rsl/CppInterop.h>
 
 using namespace gamelib;
 using namespace gamelib::squares;
@@ -109,6 +110,7 @@ struct MonsterClass
 {
 	std::string Name;
 	std::string Image;
+	std::string AI;
 	int Health = 1;
 	int Attack = 2;
 	int Defense = 5;
@@ -125,6 +127,7 @@ struct MonsterClass
 	{
 		ar& ARCHIVE_NVP(Name);
 		ar& ARCHIVE_NVP(Image);
+		ar& ARCHIVE_NVP(AI);
 		ar& ARCHIVE_NVP(Health);
 		ar& ARCHIVE_NVP(Attack);
 		ar& ARCHIVE_NVP(Defense);
@@ -158,8 +161,6 @@ struct Monster : TileObject
 	void Wander();
 
 	void AITurn();
-
-	rsl::RCRef<rsl::Obj> AIObject{ nullptr };
 };
 
 struct HeroClass
@@ -434,6 +435,7 @@ private:
 
 	rsl::OSInterface mOSI;
 	rsl::Module mScriptModule{ mOSI };
+	rsl::RCRef mMonsterAIScript;
 	rsl::ExecutionContext mMonsterAIContext{ mScriptModule };
 
 	bool mQuit = false;
@@ -454,7 +456,7 @@ private:
 	std::map<std::string, WeaponClass, std::less<>> mWeaponClasses;
 
 	template <typename T>
-	void LoadClasses(path from_file, std::map<std::string, T, std::less<>>& map)
+	void LoadClasses(path from_file, std::map<std::string, T, std::less<>>& map, std::function<void(T&)> callback = {})
 	{
 		std::ifstream file{ from_file };
 		if (file.peek() == 0xEF) /// FUCK UTF8 BOMS
@@ -468,6 +470,8 @@ private:
 				archive::JsonArchiver archiver{ mReporter, row };
 				auto& klass = map[(std::string)archiver.CurrentObject->at("Name")];
 				klass.Archive(archiver);
+				if (callback)
+					callback(klass);
 			}
 		}
 		catch (Reporter& e)

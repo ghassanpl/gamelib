@@ -1,6 +1,5 @@
 #include "game.h"
 #include <fstream>
-#include <rsl/Structure.h>
 
 ALLEGRO_USTR_INFO ToAllegro(std::string_view str)
 {
@@ -127,17 +126,22 @@ void Game::Load()
 			}
 			catch (rsl::RSException& e)
 			{
+				/// TODO: Move this to OSI
 				mReporter.Error("Script error: {}", e.ToString());
 			}
 		}
 	}
-	
+
 	try
 	{
+		auto monster_class = mScriptModule.CreateNativeClass<Monster>(mScriptModule.GlobalNamespace(), "Monster", rsl::NativeClassType::RefType);
+		monster_class->AddMethod(mScriptModule, "CanSeePlayer", &Monster::CanSeePlayer);
+
 		mScriptModule.Link();
 	}
 	catch (rsl::RSException& e)
 	{
+		/// TODO: Move this to OSI
 		mReporter.Error("Script error: {}", e.ToString());
 	}
 
@@ -173,9 +177,16 @@ void Game::Load()
 	mCurrentMap.SpawnObject<Trap>({ 4,4 });
 	mCurrentMap.SpawnObject<Item>({ 5,4 });
 
-	auto ai = mScriptModule.FindClass("Monsters.GoblinGuardAI");
-	monster->AIObject = mMonsterAIContext.NewGC(ai);
-	//mMonsterAIContext.
+	try
+	{
+		mMonsterAIScript = mMonsterAIContext.New(mScriptModule.FindClass("MonsterAI"));
+		mMonsterAIContext.Call(mMonsterAIScript, monster->Class->AI, monster);
+	}
+	catch (rsl::RSException& e)
+	{
+		/// TODO: Move this to OSI
+		mReporter.Error("Script error: {}", e.ToString());
+	}
 
 	for (auto& obj : mCurrentMap.Objects)
 	{
