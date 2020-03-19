@@ -8,6 +8,7 @@ class MonsterAI
 				monster.MoveTowardPlayer()
 			end
 		else
+			yield(5)
 			monster.Wander()
 		end
 	end

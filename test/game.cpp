@@ -109,40 +109,31 @@ void Game::Load()
 		}
 	}
 
-	for (auto it = std::filesystem::recursive_directory_iterator{ "data/scripts" }; it != std::filesystem::recursive_directory_iterator{}; ++it)
+	/// Load scripts
 	{
-		auto path = it->path();
-		if (path.extension() == ".rsl")
+		for (auto it = std::filesystem::recursive_directory_iterator{ "data/scripts" }; it != std::filesystem::recursive_directory_iterator{}; ++it)
 		{
-			//mScriptModule
-			std::stringstream buffer;
-			std::ifstream srm{ path };
-			buffer << srm.rdbuf();
-			srm.close();
-
-			try
+			auto path = it->path();
+			if (path.extension() == ".rsl")
 			{
+				//mScriptModule
+				std::stringstream buffer;
+				std::ifstream srm{ path };
+				buffer << srm.rdbuf();
+				srm.close();
+
 				mScriptModule.Parse(buffer.str(), path.string());
 			}
-			catch (rsl::RSException& e)
-			{
-				/// TODO: Move this to OSI
-				mReporter.Error("Script error: {}", e.ToString());
-			}
 		}
-	}
 
-	try
-	{
 		auto monster_class = mScriptModule.CreateNativeClass<Monster>(mScriptModule.GlobalNamespace(), "Monster", rsl::NativeClassType::RefType);
+
 		monster_class->AddMethod(mScriptModule, "CanSeePlayer", &Monster::CanSeePlayer);
+		monster_class->AddMethod(mScriptModule, "Wander", &Monster::Wander);
 
 		mScriptModule.Link();
-	}
-	catch (rsl::RSException& e)
-	{
-		/// TODO: Move this to OSI
-		mReporter.Error("Script error: {}", e.ToString());
+
+		mMonsterAIScript = mMonsterAIContext.New(mScriptModule.FindClass("MonsterAI"));
 	}
 
 	mImages["input/up"] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_W.png");
@@ -176,17 +167,6 @@ void Game::Load()
 	mCurrentMap.SpawnObject<Trigger>({ 3,4 });
 	mCurrentMap.SpawnObject<Trap>({ 4,4 });
 	mCurrentMap.SpawnObject<Item>({ 5,4 });
-
-	try
-	{
-		mMonsterAIScript = mMonsterAIContext.New(mScriptModule.FindClass("MonsterAI"));
-		mMonsterAIContext.Call(mMonsterAIScript, monster->Class->AI, monster);
-	}
-	catch (rsl::RSException& e)
-	{
-		/// TODO: Move this to OSI
-		mReporter.Error("Script error: {}", e.ToString());
-	}
 
 	for (auto& obj : mCurrentMap.Objects)
 	{
@@ -485,7 +465,7 @@ void Game::ModeEndTurn(ModeAction action)
 		if (mTiming.TimeSinceFlag("mode_entered") >= sign_time)
 		{
 			mPlayer->AP = mPlayer->Class->Speed;
-			SwitchMode(&Game::ModeStartTurn);
+			SwitchMode(&Game::ModeEvilTurn);
 		}
 		break;
 	case ModeAction::UIDraw:
@@ -496,6 +476,27 @@ void Game::ModeEndTurn(ModeAction action)
 		break;
 	}
 	}
+}
+
+void Game::ModeEvilTurn(ModeAction action)
+{
+	switch (action)
+	{
+	case ModeAction::Enter:
+		break;
+	case ModeAction::Leave:
+		break;
+	case ModeAction::Update:
+		break;
+	}
+	/*
+	auto yield_result = mMonsterAIContext.Call(mMonsterAIScript, monster->Class->AI, monster);
+	while (mMonsterAIContext.Suspended())
+	{
+		fmt::print("yielded: {}\n", yield_result->ToString());
+		mMonsterAIContext.Resume(yield_result.Value());
+	}
+	*/
 }
 
 void Game::ModeStartTurn(ModeAction action)
@@ -526,6 +527,15 @@ void Game::SwitchMode(GameMode mode)
 	mCurrentMode = mode;
 	mTiming.SetFlag("mode_entered");
 	DoModeAction(ModeAction::Enter);
+}
+
+void Game::ReportSingle(rsl::ReportType type, rsl::ReportModule in_module, rsl::SourcePos const& pos, std::string_view message)
+{
+	OSInterface::ReportSingle(type, in_module, pos, message);
+	if ((int)type >= (int)ReportType::Warning)
+	{
+		mReporter.Error("Script {}: {}: {}: {}", type, in_module, pos.ToString(), message);
+	}
 }
 
 void Game::Shutdown()

@@ -325,7 +325,7 @@ struct Map
 	Map();
 };
 
-struct Game
+struct Game : rsl::OSInterface
 {
 	void Init();
 
@@ -433,9 +433,8 @@ private:
 	PanZoomer mPanZoomer{ mInput, mCamera };
 	AllegroImGuiDebugger mDebugger;
 
-	rsl::OSInterface mOSI;
-	rsl::Module mScriptModule{ mOSI };
-	rsl::RCRef mMonsterAIScript;
+	rsl::Module mScriptModule{ *this };
+	rsl::ValueRef mMonsterAIScript;
 	rsl::ExecutionContext mMonsterAIContext{ mScriptModule };
 
 	bool mQuit = false;
@@ -497,6 +496,7 @@ private:
 
 	void ModePlayerMovement(ModeAction action);
 	void ModeEndTurn(ModeAction action);
+	void ModeEvilTurn(ModeAction action);
 	void ModeStartTurn(ModeAction action);
 
 	typedef void(Game::*GameMode)(ModeAction);
@@ -510,4 +510,6 @@ private:
 	}
 
 	void SwitchMode(GameMode mode);
+
+	virtual void ReportSingle(rsl::ReportType type, rsl::ReportModule in_module, rsl::SourcePos const& pos, std::string_view message) override;
 };
