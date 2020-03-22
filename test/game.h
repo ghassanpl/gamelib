@@ -87,9 +87,17 @@ struct TileObject
 	virtual bool BlocksMovement() const { return false; }
 	virtual bool ShowInFog() const { return true; }
 
-	virtual bool TryBump(Game* game, Direction from) { return false; }
-	virtual bool EnteredTile(Game* game) { return false; }
-	virtual bool LeavingTile(Game* game) { return false; }
+	virtual bool PlayerBumped(Game* game, Direction from) { return false; }
+	virtual bool PlayerEnteredTile(Game* game) { return false; }
+	virtual bool PlayerLeavingTile(Game* game) { return false; }
+	
+	virtual void StartHeroTurn() { }
+
+	/// Returns whether it wants to take actions
+	virtual bool StartEvilTurn() { return false; }
+
+	/// Returns whether it is done this turn
+	virtual bool UpdateEvilTurn(Game* game) { return true; }
 
 protected:
 
@@ -106,19 +114,23 @@ struct Furniture : TileObject
 	virtual std::string Image() const override { return "obj/furniture/rubble"; }
 };
 
-struct MonsterClass
+struct CreatureClass
 {
 	std::string Name;
 	std::string Image;
-	std::string AI;
 	int Health = 1;
 	int Attack = 2;
 	int Defense = 5;
-	int Damage = 1;
 	int Speed = 3;
+};
+
+struct MonsterClass : CreatureClass
+{
+	std::string AI;
+	int Damage = 1;
 	int XP = 1;
-	std::map<std::string, std::string> Abilities;
 	std::vector<std::string> Traits;
+	std::map<std::string, std::string> Abilities;
 	//std::vector<std::string> Barks;
 	std::string Barks;
 
@@ -140,16 +152,32 @@ struct MonsterClass
 	}
 };
 
-struct Monster : TileObject
+struct Creature : TileObject
 {
-	Monster(Map* pm, ivec2 at, MonsterClass const& klass) : TileObject(pm, at), Class(&klass) {}
+	Creature(Map* pm, ivec2 at, CreatureClass const& klass) : TileObject(pm, at), Class(&klass), AP(klass.Speed) {}
 
-	MonsterClass const* Class = nullptr;
+	CreatureClass const* Class = nullptr;
+	int AP = 0;
 
 	virtual bool BlocksMovement() const override { return true; }
 	virtual bool ShowInFog() const override { return false; }
+
 	virtual std::string Name() const override { return Class->Name; }
 	virtual std::string Image() const override { return Class->Image; }
+
+	virtual bool UpdateEvilTurn(Game* game) override;
+
+};
+
+struct Monster : Creature
+{
+	using Creature::Creature;
+
+	virtual bool StartEvilTurn() override
+	{
+		AP = Class->Speed;
+		return true;
+	}
 
 	virtual ObjectZ Z() const override { return ObjectZ::Monsters; }
 
@@ -163,16 +191,10 @@ struct Monster : TileObject
 	void AITurn();
 };
 
-struct HeroClass
+struct HeroClass : CreatureClass
 {
-	std::string Name;
-	int Health;
-	int Attack;
-	int Defense;
-	int Speed;
 	int MagicPower;
 	int Strength;
-	std::string Image;
 	std::vector<std::string> StartingEquipment;
 	std::vector<std::string> StartingSkills;
 	std::string Motto;
@@ -194,17 +216,15 @@ struct HeroClass
 	}
 };
 
-struct Hero : TileObject
+struct Hero : Creature
 {
-	HeroClass const* Class = nullptr;
+	using Creature::Creature;
 
-	Hero(Map* pm, ivec2 at, HeroClass const& klass) : TileObject(pm, at), Class(&klass), AP(klass.Speed) {}
+	virtual void StartHeroTurn() override
+	{
+		AP = Class->Speed;
+	}
 
-	int AP = 0;
-
-	virtual std::string Name() const override { return Class->Name; }
-	virtual std::string Image() const override { return Class->Image; }
-	virtual bool BlocksMovement() const override { return true; }
 	virtual ObjectZ Z() const override { return ObjectZ::Heroes; }
 };
 
@@ -218,7 +238,7 @@ struct Door : TileObject
 	virtual std::string OpenImage() const { return "obj/doors/stone_open"; }
 	virtual ObjectZ Z() const override { return ObjectZ::Walls; }
 
-	virtual bool TryBump(Game* game, Direction from) override;
+	virtual bool PlayerBumped(Game* game, Direction from) override;
 };
 
 struct Stairs : TileObject
@@ -434,7 +454,7 @@ private:
 	AllegroImGuiDebugger mDebugger;
 
 	rsl::Module mScriptModule{ *this };
-	rsl::ValueRef mMonsterAIScript;
+	rsl::ValueRef mMonsterAIObject;
 	rsl::ExecutionContext mMonsterAIContext{ mScriptModule };
 
 	bool mQuit = false;
@@ -502,12 +522,12 @@ private:
 	typedef void(Game::*GameMode)(ModeAction);
 
 	GameMode mCurrentMode = &Game::ModePlayerMovement;
+	std::vector<TileObject*> mEvilObjects;
+	TileObject* mCurrentEvil = nullptr;
 
-	void DoModeAction(ModeAction action)
-	{
-		if (mCurrentMode)
-			(this->*mCurrentMode)(action);
-	}
+	bool NextEvil();
+
+	void DoModeAction(ModeAction action);
 
 	void SwitchMode(GameMode mode);
 

@@ -133,7 +133,7 @@ void Game::Load()
 
 		mScriptModule.Link();
 
-		mMonsterAIScript = mMonsterAIContext.New(mScriptModule.FindClass("MonsterAI"));
+		mMonsterAIObject = mMonsterAIContext.New(mScriptModule.FindClass("MonsterAI"));
 	}
 
 	mImages["input/up"] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_W.png");
@@ -337,7 +337,7 @@ void Game::DirectionAction(Direction dir)
 	/// Bump first
 
 	for (auto& obj : mCurrentMap->At(player_pos)->Objects)
-		if (obj->WallPosition == dir && obj->TryBump(this, dir))
+		if (obj->WallPosition == dir && obj->PlayerBumped(this, dir))
 			return;
 	
 	if (!mCurrentMap->IsValid(target_pos))
@@ -351,7 +351,7 @@ void Game::DirectionAction(Direction dir)
 		if (obj->BlocksMovement())
 		{
 			can_move = false;
-			if (obj->TryBump(this, dir))
+			if (obj->PlayerBumped(this, dir))
 				return;
 		}
 
@@ -362,7 +362,7 @@ void Game::DirectionAction(Direction dir)
 		SpendAP();
 
 		for (auto& obj : mCurrentMap.RoomGrid.At(mPlayer->Position())->Objects)
-			if (obj->EnteredTile(this))
+			if (obj->PlayerEnteredTile(this))
 				return;
 	}
 }
@@ -439,88 +439,6 @@ ALLEGRO_BITMAP* Game::GetImage(std::string_view name) const
 	return it->second;
 }
 
-void Game::ModePlayerMovement(ModeAction action)
-{
-	switch (action)
-	{
-	case ModeAction::Update:
-		if (mInput.WasButtonPressed("up"))
-			DirectionAction(Direction::Up);
-		else if (mInput.WasButtonPressed("left"))
-			DirectionAction(Direction::Left);
-		else if (mInput.WasButtonPressed("right"))
-			DirectionAction(Direction::Right);
-		else if (mInput.WasButtonPressed("down"))
-			DirectionAction(Direction::Down);
-		break;
-	}
-}
-
-void Game::ModeEndTurn(ModeAction action)
-{
-	static constexpr seconds_t sign_time = 0.65;
-	switch (action)
-	{
-	case ModeAction::Update:
-		if (mTiming.TimeSinceFlag("mode_entered") >= sign_time)
-		{
-			mPlayer->AP = mPlayer->Class->Speed;
-			SwitchMode(&Game::ModeEvilTurn);
-		}
-		break;
-	case ModeAction::UIDraw:
-	{
-		auto delta = std::pow(mTiming.FlagDelta("mode_entered", sign_time) * 2.0 - 1.0, 5);
-		DrawText(mBigFont, { mScreenRect.width() / 2.0f, (mScreenRect.height() / 2.0f) + mScreenRect.height() * delta }, Colors::Red, Colors::GetBlack(0.7f), Align::CenterMiddle,
-			"Evil Turn", mPlayer->AP);
-		break;
-	}
-	}
-}
-
-void Game::ModeEvilTurn(ModeAction action)
-{
-	switch (action)
-	{
-	case ModeAction::Enter:
-		break;
-	case ModeAction::Leave:
-		break;
-	case ModeAction::Update:
-		break;
-	}
-	/*
-	auto yield_result = mMonsterAIContext.Call(mMonsterAIScript, monster->Class->AI, monster);
-	while (mMonsterAIContext.Suspended())
-	{
-		fmt::print("yielded: {}\n", yield_result->ToString());
-		mMonsterAIContext.Resume(yield_result.Value());
-	}
-	*/
-}
-
-void Game::ModeStartTurn(ModeAction action)
-{
-	static constexpr seconds_t sign_time = 0.65;
-	switch (action)
-	{
-	case ModeAction::Update:
-		if (mTiming.TimeSinceFlag("mode_entered") >= sign_time)
-		{
-			mPlayer->AP = mPlayer->Class->Speed;
-			SwitchMode(&Game::ModePlayerMovement);
-		}
-		break;
-	case ModeAction::UIDraw:
-	{
-		auto delta = std::pow(mTiming.FlagDelta("mode_entered", sign_time) * 2.0 - 1.0, 5);
-		DrawText(mBigFont, { mScreenRect.width() / 2.0f, (mScreenRect.height() / 2.0f) + mScreenRect.height() * delta }, Colors::Green, Colors::GetBlack(0.7f), Align::CenterMiddle,
-			"Hero Turn", mPlayer->AP);
-		break;
-	}
-	}
-}
-
 void Game::SwitchMode(GameMode mode)
 {
 	DoModeAction(ModeAction::Leave);
@@ -560,7 +478,7 @@ void TileObject::MoveTo(ivec2 pos)
 	mParentMap->RoomGrid.At(mPosition)->Objects.insert(this);
 }
 
-bool Door::TryBump(Game* game, Direction from)
+bool Door::PlayerBumped(Game* game, Direction from)
 {
 	if (!Open)
 	{
@@ -676,4 +594,129 @@ void Monster::AITurn()
 	else
 	StandStill();
 	*/
+}
+
+bool Creature::UpdateEvilTurn(Game* game)
+{
+	/*
+	auto result = mMonsterAIContext.Call(mMonsterAIObject, monster->Class->AI, monster);
+	while (mMonsterAIContext.Suspended())
+	{
+		mMonsterAIContext.Resume(result.Value());
+	}
+	*/
+	return true;
+}
+
+bool Game::NextEvil()
+{
+	if (mEvilObjects.size())
+	{
+		mCurrentEvil = mEvilObjects.back();
+		mEvilObjects.pop_back();
+		return true;
+	}
+	else
+	{
+		mCurrentEvil = nullptr;
+		return false;
+	}
+}
+
+void Game::DoModeAction(ModeAction action)
+{
+	if (mCurrentMode)
+		(this->*mCurrentMode)(action);
+}
+
+void Game::ModeEvilTurn(ModeAction action)
+{
+	switch (action)
+	{
+	case ModeAction::Enter:
+		/// Get all the monsters
+		break;
+	case ModeAction::Leave:
+		break;
+	case ModeAction::Update:
+		if (!mCurrentEvil)
+			SwitchMode(&Game::ModeStartTurn);
+		else if (mCurrentEvil->UpdateEvilTurn(this))
+			NextEvil();
+		break;
+	}
+}
+
+void Game::ModePlayerMovement(ModeAction action)
+{
+	switch (action)
+	{
+	case ModeAction::Enter:
+		for (auto& obj : mCurrentMap.Objects)
+			obj->StartHeroTurn();
+		break;
+	case ModeAction::Update:
+		if (mInput.WasButtonPressed("up"))
+			DirectionAction(Direction::Up);
+		else if (mInput.WasButtonPressed("left"))
+			DirectionAction(Direction::Left);
+		else if (mInput.WasButtonPressed("right"))
+			DirectionAction(Direction::Right);
+		else if (mInput.WasButtonPressed("down"))
+			DirectionAction(Direction::Down);
+		break;
+	}
+}
+
+void Game::ModeEndTurn(ModeAction action)
+{
+	static constexpr seconds_t sign_time = 0.65;
+	switch (action)
+	{
+	case ModeAction::Enter:
+		/// Gather evil objects early to see if we can skip the other phases
+		mEvilObjects.clear();
+		mCurrentEvil = nullptr;
+		for (auto& obj : mCurrentMap.Objects)
+			if (obj->StartEvilTurn())
+				mEvilObjects.push_back(obj.get());
+		NextEvil();
+		if (!mCurrentEvil)
+			SwitchMode(&Game::ModePlayerMovement);
+		break;
+	case ModeAction::Update:
+		if (mTiming.TimeSinceFlag("mode_entered") >= sign_time)
+		{
+			SwitchMode(&Game::ModeEvilTurn);
+		}
+		break;
+	case ModeAction::UIDraw:
+	{
+		auto delta = std::pow(mTiming.FlagDelta("mode_entered", sign_time) * 2.0 - 1.0, 5);
+		DrawText(mBigFont, { mScreenRect.width() / 2.0f, (mScreenRect.height() / 2.0f) + mScreenRect.height() * delta }, Colors::Red, Colors::GetBlack(0.7f), Align::CenterMiddle,
+			"Evil Turn", mPlayer->AP);
+		break;
+	}
+	}
+}
+
+void Game::ModeStartTurn(ModeAction action)
+{
+	static constexpr seconds_t sign_time = 0.65;
+	switch (action)
+	{
+	case ModeAction::Update:
+		if (mTiming.TimeSinceFlag("mode_entered") >= sign_time)
+		{
+			SwitchMode(&Game::ModePlayerMovement);
+		}
+		break;
+	case ModeAction::UIDraw:
+	{
+		auto delta = std::pow(mTiming.FlagDelta("mode_entered", sign_time) * 2.0 - 1.0, 5);
+		DrawText(mBigFont, { mScreenRect.width() / 2.0f, (mScreenRect.height() / 2.0f) + mScreenRect.height() * delta }, Colors::Green, Colors::GetBlack(0.7f), Align::CenterMiddle,
+			"Hero Turn", mPlayer->AP);
+		break;
+	}
+	}
 }
