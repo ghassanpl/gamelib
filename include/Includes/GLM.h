@@ -144,7 +144,7 @@ namespace glm
 
 inline float Angle(vec2 vec)
 {
-	return glm::degrees(std::atan2(vec.y, vec.x));
+	return std::atan2(vec.y, vec.x);
 }
 
 struct ivec_hash {

@@ -66,7 +66,7 @@ namespace gamelib::squares
 
 	inline Direction ToDirection(radians_t angle)
 	{
-		return Direction(int(glm::mod(glm::degrees(angle.Value - glm::radians(45.0 / 2.0)), 360.0) / 45.0) % 8);
+		return Direction(int(glm::mod(glm::degrees(angle.Value), 360.0f) / 45.0) % 8);
 	}
 
 	inline constexpr Direction ToDirection(ivec2 vec)

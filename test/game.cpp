@@ -38,7 +38,26 @@ void Map::DetermineVisibility(vec2 from_position)
 	}
 }
 
-Map::Map()
+bool Map::CanCreatureMove(ivec2 pos, Direction dir)
+{
+	const auto target_pos = pos + ToVector(dir);
+	if (!RoomGrid.IsValid(target_pos))
+		return false;
+
+	if (NavGrid.BlocksPassage(pos, target_pos))
+		return false;
+
+	for (auto& obj : RoomGrid.At(target_pos)->Objects)
+		if (obj->BlocksMovement())
+		{
+			return false;
+		}
+
+	return true;
+}
+
+Map::Map(Game* parent) 
+	: ParentGame(parent)
 {
 	RoomGrid.Reset(26, 19);
 	NavGrid.Reset(26, 19);
@@ -130,10 +149,12 @@ void Game::Load()
 
 		monster_class->AddMethod(mScriptModule, "CanSeePlayer", &Monster::CanSeePlayer);
 		monster_class->AddMethod(mScriptModule, "Wander", &Monster::Wander);
+		monster_class->AddMethod(mScriptModule, "CanAttackPlayer", &Monster::CanAttackPlayer);
+		monster_class->AddMethod(mScriptModule, "AttackPlayer", &Monster::AttackPlayer);
+		monster_class->AddMethod(mScriptModule, "CanMoveTowardPlayer", &Monster::CanMoveTowardPlayer);
+		monster_class->AddMethod(mScriptModule, "MoveTowardPlayer", &Monster::MoveTowardPlayer);
 
 		mScriptModule.Link();
-
-		mMonsterAIObject = mMonsterAIContext.New(mScriptModule.FindClass("MonsterAI"));
 	}
 
 	mImages["input/up"] = al_load_bitmap("shared/ControllerGraphics/Keyboard & Mouse/Light/Keyboard_White_W.png");
@@ -154,7 +175,7 @@ void Game::Load()
 		tile->RotationFlags = random::IntegerRange(RNG, 0, 15);
 	});
 	mCurrentMap.BuildRoom(irec2::from_size(1, 1, 4, 3), { 2,1 }, Direction::Up);
-	//mCurrentMap.BuildRoom(irec2::from_size(5, 1, 4, 3));
+	mCurrentMap.BuildRoom(irec2::from_size(5, 1, 4, 3), { 7,3 }, Direction::Down);
 	//mCurrentMap.BuildRoom(irec2::from_size(1, 4, 4, 5));
 	//mCurrentMap.NavGrid.SetBlocksPassage({ 2,0 }, { 2,1 }, false);
 
@@ -163,7 +184,9 @@ void Game::Load()
 	mPlayer = mCurrentMap.SpawnObject<Hero>({ 1,1 }, mHeroClasses["Warrior"]);
 
 	mCurrentMap.SpawnObject<Furniture>({ 3,3 });
-	auto monster = mCurrentMap.SpawnObject<Monster>({ 4,3 }, mMonsterClasses["Goblin Guard"]);
+
+	auto monster = SpawnMonster("Goblin Guard");
+
 	mCurrentMap.SpawnObject<Trigger>({ 3,4 });
 	mCurrentMap.SpawnObject<Trap>({ 4,4 });
 	mCurrentMap.SpawnObject<Item>({ 5,4 });
@@ -337,7 +360,7 @@ void Game::DirectionAction(Direction dir)
 	/// Bump first
 
 	for (auto& obj : mCurrentMap->At(player_pos)->Objects)
-		if (obj->WallPosition == dir && obj->PlayerBumped(this, dir))
+		if (obj->WallPosition == dir && obj->PlayerBumped(dir))
 			return;
 	
 	if (!mCurrentMap->IsValid(target_pos))
@@ -351,7 +374,7 @@ void Game::DirectionAction(Direction dir)
 		if (obj->BlocksMovement())
 		{
 			can_move = false;
-			if (obj->PlayerBumped(this, dir))
+			if (obj->PlayerBumped(dir))
 				return;
 		}
 
@@ -362,7 +385,7 @@ void Game::DirectionAction(Direction dir)
 		SpendAP();
 
 		for (auto& obj : mCurrentMap.RoomGrid.At(mPlayer->Position())->Objects)
-			if (obj->PlayerEnteredTile(this))
+			if (obj->PlayerEnteredTile())
 				return;
 	}
 }
@@ -450,9 +473,18 @@ void Game::SwitchMode(GameMode mode)
 void Game::ReportSingle(rsl::ReportType type, rsl::ReportModule in_module, rsl::SourcePos const& pos, std::string_view message)
 {
 	OSInterface::ReportSingle(type, in_module, pos, message);
-	if ((int)type >= (int)ReportType::Warning)
+	if (type >= rsl::ReportType::Warning)
 	{
-		mReporter.Error("Script {}: {}: {}: {}", type, in_module, pos.ToString(), message);
+		switch (type)
+		{
+		case rsl::ReportType::AssumptionFailure:
+		case rsl::ReportType::Error:
+			mReporter.Error("Script {}: {}: {}: {}", type, in_module, pos.ToString(), message);
+			break;
+		case rsl::ReportType::Warning:
+			mReporter.Warning("Script {}: {}: {}: {}", type, in_module, pos.ToString(), message);
+			break;
+		}
 	}
 }
 
@@ -468,6 +500,28 @@ void Game::Shutdown()
 	al_uninstall_system();
 }
 
+Monster* Game::SpawnMonster(std::string_view monster_class)
+{
+	auto klass = mMonsterClasses.find(monster_class);
+	if (klass == mMonsterClasses.end())
+		mReporter.Error("could not find monster class '{}'", monster_class);
+
+	auto& ai = klass->second.AI;
+	if (ai.empty())
+		mReporter.Error("monster class '{}' has no AI script specified", monster_class);
+
+	auto monster = mCurrentMap.SpawnObject<Monster>({ 4,3 }, klass->second);
+	auto ai_class = mScriptModule.FindClass(ai);
+	if (!ai_class)
+		mReporter.Error("script class '{}' for monster class '{}' not found", klass->second.AI, monster_class);
+
+	monster->mScriptObject = mScriptContext.New(ai_class);
+
+	mScriptContext.SetField(monster->mScriptObject, "monster", monster);
+
+	return monster;
+}
+
 void TileObject::MoveTo(ivec2 pos)
 {
 	if (!mParentMap->RoomGrid.IsValid(pos)) return;
@@ -478,11 +532,11 @@ void TileObject::MoveTo(ivec2 pos)
 	mParentMap->RoomGrid.At(mPosition)->Objects.insert(this);
 }
 
-bool Door::PlayerBumped(Game* game, Direction from)
+bool Door::PlayerBumped(Direction from)
 {
 	if (!Open)
 	{
-		game->OpenDoor(this);
+		mParentMap->ParentGame->OpenDoor(this);
 		return true;
 	}
 	else
@@ -505,108 +559,6 @@ void Game::OpenDoor(Door* door)
 
 	SpendAP();
 }	
-
-bool Monster::CanSeePlayer() const
-{
-	/// TODO: Last Player Position stuff
-	//return Game()->OurWorld->NavigationGrid().CanSee(Position(), Game()->CurrentPlayer->GetPosition(), true);
-	return false;
-}
-
-bool Monster::CanAttackPlayer() const
-{
-	/*
-	if (CanAttackDiagonally())
-	return IsSurrounding(Position(), Game()->CurrentPlayer->GetPosition());
-	else
-	return IsNeighbor(Position(), Game()->CurrentPlayer->GetPosition());
-	*/
-	return false;
-}
-
-void Monster::AttackPlayer()
-{
-
-}
-
-bool Monster::CanMoveTowardPlayer()
-{
-	//return Game()->CanEnter(GetPosition() + DirToPlayer());
-	return false;
-}
-
-void Monster::MoveTowardPlayer()
-{
-	//SetPosition(GetPosition() + DirToPlayer());
-}
-
-void Monster::Wander()
-{
-	/*
-	auto wander_pos = GetPosition() + Game()->GetRandomNeighbor();
-	if (Game()->CanEnter(wander_pos))
-	SetPosition(wander_pos);
-	*/
-}
-
-void Monster::AITurn()
-{
-	if (CanSeePlayer())
-	{
-		/// mLastSeenPlayerPosition = Game()->CurrentPlayer->GetPosition();
-		/// mLastSeenPlayerTime = Game()->WorldTime
-		if (CanAttackPlayer())
-			AttackPlayer();
-		else if (CanMoveTowardPlayer())
-			MoveTowardPlayer();
-	}
-	else
-		Wander();
-
-	/*
-	if (Health() < ScaredHealth())
-	{
-	if (CanRunAwayFromPlayer())
-	RunAwayFromPlayer(); /// NOTE: Different than MoveAwayFromPlayer
-	else if (CanAttackPlayer())
-	AttackPlayer();
-	}
-	else if (TooFarFromPlayer() and CanAttackPlayer() and CanMoveTowardPlayer())
-	{
-	if (Game()->WithProbability(ChargeProbability()))
-	MoveTowardPlayer();
-	else
-	AttackPlayer();
-	}
-	else if (TooCloseToPlayer() and CanAttackPlayer() and CanMoveAwayFromPlayer())
-	{
-	if (Game()->WithProbability(RetreatProbability()))
-	MoveAwayFromPlayer();
-	else
-	AttackPlayer();
-	}
-	else if (CanAttackPlayer())
-	AttackPlayer();
-	else if (TooFarFromPlayer() and CanMoveTowardPlayer())
-	MoveTowardPlayer();
-	else if (TooCloseToPlayer() and CanMoveAwayFromPlayer())
-	MoveAwayFromPlayer();
-	else
-	StandStill();
-	*/
-}
-
-bool Creature::UpdateEvilTurn(Game* game)
-{
-	/*
-	auto result = mMonsterAIContext.Call(mMonsterAIObject, monster->Class->AI, monster);
-	while (mMonsterAIContext.Suspended())
-	{
-		mMonsterAIContext.Resume(result.Value());
-	}
-	*/
-	return true;
-}
 
 bool Game::NextEvil()
 {
@@ -641,7 +593,7 @@ void Game::ModeEvilTurn(ModeAction action)
 	case ModeAction::Update:
 		if (!mCurrentEvil)
 			SwitchMode(&Game::ModeStartTurn);
-		else if (mCurrentEvil->UpdateEvilTurn(this))
+		else if (mCurrentEvil->UpdateEvilTurn())
 			NextEvil();
 		break;
 	}

@@ -87,9 +87,9 @@ struct TileObject
 	virtual bool BlocksMovement() const { return false; }
 	virtual bool ShowInFog() const { return true; }
 
-	virtual bool PlayerBumped(Game* game, Direction from) { return false; }
-	virtual bool PlayerEnteredTile(Game* game) { return false; }
-	virtual bool PlayerLeavingTile(Game* game) { return false; }
+	virtual bool PlayerBumped(Direction from) { return false; }
+	virtual bool PlayerEnteredTile() { return false; }
+	virtual bool PlayerLeavingTile() { return false; }
 	
 	virtual void StartHeroTurn() { }
 
@@ -97,12 +97,13 @@ struct TileObject
 	virtual bool StartEvilTurn() { return false; }
 
 	/// Returns whether it is done this turn
-	virtual bool UpdateEvilTurn(Game* game) { return true; }
+	virtual bool UpdateEvilTurn() { return true; }
 
 protected:
 
 	Map* mParentMap = nullptr;
 	ivec2 mPosition{};
+
 };
 
 struct Furniture : TileObject
@@ -122,6 +123,21 @@ struct CreatureClass
 	int Attack = 2;
 	int Defense = 5;
 	int Speed = 3;
+};
+
+struct Creature : TileObject
+{
+	Creature(Map* pm, ivec2 at, CreatureClass const& klass) : TileObject(pm, at), Class(&klass), AP(klass.Speed) {}
+
+	CreatureClass const* Class = nullptr;
+	int AP = 0;
+
+	virtual bool BlocksMovement() const override { return true; }
+	virtual bool ShowInFog() const override { return false; }
+
+	virtual std::string Name() const override { return Class->Name; }
+	virtual std::string Image() const override { return Class->Image; }
+
 };
 
 struct MonsterClass : CreatureClass
@@ -152,32 +168,11 @@ struct MonsterClass : CreatureClass
 	}
 };
 
-struct Creature : TileObject
-{
-	Creature(Map* pm, ivec2 at, CreatureClass const& klass) : TileObject(pm, at), Class(&klass), AP(klass.Speed) {}
-
-	CreatureClass const* Class = nullptr;
-	int AP = 0;
-
-	virtual bool BlocksMovement() const override { return true; }
-	virtual bool ShowInFog() const override { return false; }
-
-	virtual std::string Name() const override { return Class->Name; }
-	virtual std::string Image() const override { return Class->Image; }
-
-	virtual bool UpdateEvilTurn(Game* game) override;
-
-};
-
 struct Monster : Creature
 {
 	using Creature::Creature;
 
-	virtual bool StartEvilTurn() override
-	{
-		AP = Class->Speed;
-		return true;
-	}
+	virtual bool StartEvilTurn() override;
 
 	virtual ObjectZ Z() const override { return ObjectZ::Monsters; }
 
@@ -187,6 +182,12 @@ struct Monster : Creature
 	bool CanMoveTowardPlayer();
 	void MoveTowardPlayer();
 	void Wander();
+
+	virtual bool UpdateEvilTurn() override;
+
+	rsl::ValueRef mScriptObject;
+
+	Direction DirToPlayer() const;
 
 	void AITurn();
 };
@@ -238,7 +239,7 @@ struct Door : TileObject
 	virtual std::string OpenImage() const { return "obj/doors/stone_open"; }
 	virtual ObjectZ Z() const override { return ObjectZ::Walls; }
 
-	virtual bool PlayerBumped(Game* game, Direction from) override;
+	virtual bool PlayerBumped(Direction from) override;
 };
 
 struct Stairs : TileObject
@@ -317,6 +318,10 @@ constexpr auto shadow_size = 20;
 
 struct Map
 {
+	Map(Game* parent);
+
+	Game* ParentGame = nullptr;
+
 	Grid<RoomTile> RoomGrid;
 	WallNavigationGrid NavGrid;
 	std::vector<std::unique_ptr<TileObject>> Objects;
@@ -342,7 +347,7 @@ struct Map
 
 	void DetermineVisibility(vec2 from_position);
 
-	Map();
+	bool CanCreatureMove(ivec2 pos, Direction dir);
 };
 
 struct Game : rsl::OSInterface
@@ -398,7 +403,23 @@ struct Game : rsl::OSInterface
 
 	void Shutdown();
 
+	Monster* SpawnMonster(std::string_view monster_class);
+
+	Hero* Player() const { return mPlayer; }
+
 	void OpenDoor(Door* door);
+
+	template <typename... ARGS>
+	bool SuspendableCall(rsl::ValueRef const& self, std::string_view method_name, ARGS&&... args)
+	{
+		auto result = mScriptContext.Call(self, method_name, std::forward<ARGS>(args)...);
+		if (mScriptContext.Suspended())
+		{
+			/// TODO: Setup the suspension state and anims and stuff
+			return false;
+		}
+		return true;
+	}
 
 private:
 
@@ -454,8 +475,7 @@ private:
 	AllegroImGuiDebugger mDebugger;
 
 	rsl::Module mScriptModule{ *this };
-	rsl::ValueRef mMonsterAIObject;
-	rsl::ExecutionContext mMonsterAIContext{ mScriptModule };
+	rsl::ExecutionContext mScriptContext{ mScriptModule };
 
 	bool mQuit = false;
 	double mDT = 0;
@@ -466,7 +486,7 @@ private:
 
 	Page mTileDescription;
 
-	Map mCurrentMap;
+	Map mCurrentMap{ this };
 	Hero* mPlayer = nullptr;
 
 	std::map<std::string, HeroClass, std::less<>> mHeroClasses;
