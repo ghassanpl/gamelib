@@ -4,7 +4,7 @@
 bool Monster::StartEvilTurn()
 {
 	AP = Class->Speed;
-	return true;
+	return ParentMap()->ParentGame->Call<bool>(mScriptObject, "StartEvilTurn");
 }
 
 bool Monster::CanSeePlayer() const
@@ -48,6 +48,8 @@ void Monster::MoveTowardPlayer()
 		MoveTo(Position() + ToVector(dir+1));
 	else if (mParentMap->CanCreatureMove(Position(), dir-1))
 		MoveTo(Position() + ToVector(dir-1));
+
+	ParentMap()->ParentGame->CameraFollow(this, true);
 }
 
 void Monster::Wander()
@@ -93,7 +95,13 @@ StandStill();
 
 bool Monster::UpdateEvilTurn()
 {
-	return ParentMap()->ParentGame->SuspendableCall(mScriptObject, "UpdateEvilTurn");
+	if (AP)
+	{
+		ParentMap()->ParentGame->Call(mScriptObject, "UpdateEvilTurn");
+		if (--AP > 0)
+			return false;
+	}
+	return true;
 }
 
 Direction Monster::DirToPlayer() const

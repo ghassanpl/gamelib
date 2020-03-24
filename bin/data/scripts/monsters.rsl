@@ -1,6 +1,18 @@
-class MonsterAI
+class BaseMonster
+	var monster = null
 
-	func GoblinGuard(monster)
+	func SetMonster(monster)
+		this.monster = monster
+	end
+end
+
+class GoblinGuard extends BaseMonster
+
+	func StartEvilTurn()
+		return monster.CanSeePlayer()
+	end
+
+	func UpdateEvilTurn()
 		if monster.CanSeePlayer() then
 			if monster.CanAttackPlayer() then
 				monster.AttackPlayer()
@@ -11,4 +23,5 @@ class MonsterAI
 			monster.Wander()
 		end
 	end
+	
 end

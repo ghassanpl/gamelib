@@ -252,17 +252,23 @@ void Game::Events()
 
 void Game::Update()
 {
-	if (mPanZoomer.Update(mDT))
-		mCameraFocus = false;
+	/// Update animators
+	for (auto& anim : mAnimators)
+		if (anim(mDT)) anim = {};
+	std::erase_if(mAnimators, [](std::function<bool(seconds_t)>& anim) { return !anim; });
+
+	for (auto& obj : mCurrentMap.Objects)
+		obj->Update(mDT);
+
+	DoModeAction(ModeAction::Update);
 
 	if (mCameraFocus)
 	{
 		auto wc = mCamera.GetWorldCenter();
 		Approach(wc, mCameraTarget, float(mDT * mCameraSpeed));
 		mCamera.SetWorldCenter(wc);
+		//mCamera.SetWorldCenter(mCameraTarget->CameraPosition());
 	}
-
-	DoModeAction(ModeAction::Update);
 }
 
 void Game::Debug()
@@ -291,7 +297,7 @@ void Game::Render()
 	ForEachVisibleTile([&](ivec2 pos, RoomTile* tile, vec2 world_pos) {
 		if (!mCurrentMap.NavGrid.WasSeen(pos)) return;
 
-		al_draw_rotated_bitmap(tile->Bg, half_tile_size, half_tile_size, world_pos.x + half_tile_size, world_pos.y + half_tile_size, glm::radians((tile->RotationFlags >> 2) * 90.0f), tile->RotationFlags & 3);
+		al_draw_rotated_bitmap(tile->Bg, _half_tile_width, _half_tile_width, world_pos.x + _half_tile_width, world_pos.y + _half_tile_width, glm::radians((tile->RotationFlags >> 2) * 90.0f), tile->RotationFlags & 3);
 	});
 
 	/// Sub-wall objects
@@ -346,10 +352,20 @@ void Game::Render()
 
 void Game::UpdateCamera()
 {
-	auto player_world_pos = mCurrentMap.RoomGrid.TilePositionToWorldPosition(mPlayer->Position(), tile_size) + tile_size / 2.0f;
-	mCameraTarget = player_world_pos;
+	CameraFollow(mPlayer);
+	mCurrentMap.DetermineVisibility(mCurrentMap->TilePositionToWorldPosition(mPlayer->Position(), tile_size) + half_tile_size);
+}
+
+void Game::CameraFollow(TileObject* object, bool wait)
+{
 	mCameraFocus = true;
-	mCurrentMap.DetermineVisibility(player_world_pos);
+	mCameraTarget = mCurrentMap->TilePositionToWorldPosition(object->Position(), tile_size) + half_tile_size;
+
+	if (wait)
+	{
+		mAnimators.push_back([&](seconds_t dt) { return glm::distance(mCameraTarget, mCamera.GetWorldCenter()) < 1.0; });
+		PushMode(&Game::ModeWait);
+	}
 }
 
 void Game::DirectionAction(Direction dir)
@@ -443,12 +459,13 @@ void Game::DrawObjects(std::function<bool(TileObject*)> filter)
 	{
 		vec2 gfx_offset = { 0, 0 };
 		if (obj->WallPosition != Direction::None)
-			gfx_offset = vec2{ ToVector(obj->WallPosition) } *half_tile_size;
+			gfx_offset = vec2{ ToVector(obj->WallPosition) } * _half_tile_width;
 
+		auto cur = obj->CameraPosition();
 		al_draw_tinted_scaled_rotated_bitmap(
 			obj->Texture,
 			ToAllegro(Colors::White),
-			half_tile_size, half_tile_size, float(obj->Position().x) * tile_width + half_tile_size + gfx_offset.x, float(obj->Position().y) * tile_width + half_tile_size + gfx_offset.y, 1.0f, 1.0f,
+			_half_tile_width, _half_tile_width, cur.x + gfx_offset.x, cur.y + gfx_offset.y, 1.0f, 1.0f,
 			glm::radians((obj->RotationFlags >> 2) * 90.0f), obj->RotationFlags & 3
 		);
 	}
@@ -468,6 +485,24 @@ void Game::SwitchMode(GameMode mode)
 	mCurrentMode = mode;
 	mTiming.SetFlag("mode_entered");
 	DoModeAction(ModeAction::Enter);
+}
+
+void Game::PushMode(GameMode mode)
+{
+	DoModeAction(ModeAction::Suspend);
+	mModeStack.push_back(mCurrentMode);
+	mCurrentMode = mode;
+	mTiming.SetFlag("mode_entered");
+	DoModeAction(ModeAction::Enter);
+}
+
+void Game::PopMode()
+{
+	DoModeAction(ModeAction::Leave);
+	mCurrentMode = mModeStack.back();
+	mModeStack.pop_back();
+	mTiming.SetFlag("mode_entered");
+	DoModeAction(ModeAction::Return);
 }
 
 void Game::ReportSingle(rsl::ReportType type, rsl::ReportModule in_module, rsl::SourcePos const& pos, std::string_view message)
@@ -522,9 +557,19 @@ Monster* Game::SpawnMonster(std::string_view monster_class)
 	return monster;
 }
 
+vec2 TileObject::CameraPosition() const
+{
+	const auto from = mParentMap->RoomGrid.TilePositionToWorldPosition(mLastPosition, tile_size);
+	const auto to = mParentMap->RoomGrid.TilePositionToWorldPosition(mPosition, tile_size);
+	return glm::lerp(from, to, (float)MoveDelta()) + half_tile_size;
+}
+
 void TileObject::MoveTo(ivec2 pos)
 {
 	if (!mParentMap->RoomGrid.IsValid(pos)) return;
+
+	mMoveDelta = 0;
+	mLastPosition = mPosition;
 
 	/// TODO: Remove and insert to ALL tiles in Size
 	mParentMap->RoomGrid.At(mPosition)->Objects.erase(this);
@@ -608,6 +653,9 @@ void Game::ModePlayerMovement(ModeAction action)
 			obj->StartHeroTurn();
 		break;
 	case ModeAction::Update:
+		if (mPanZoomer.Update(mDT))
+			mCameraFocus = false;
+
 		if (mInput.WasButtonPressed("up"))
 			DirectionAction(Direction::Up);
 		else if (mInput.WasButtonPressed("left"))
@@ -635,6 +683,8 @@ void Game::ModeEndTurn(ModeAction action)
 		NextEvil();
 		if (!mCurrentEvil)
 			SwitchMode(&Game::ModePlayerMovement);
+		else
+			CameraFollow(mCurrentEvil);
 		break;
 	case ModeAction::Update:
 		if (mTiming.TimeSinceFlag("mode_entered") >= sign_time)
@@ -657,6 +707,9 @@ void Game::ModeStartTurn(ModeAction action)
 	static constexpr seconds_t sign_time = 0.65;
 	switch (action)
 	{
+	case ModeAction::Enter:
+		CameraFollow(mPlayer);
+		break;
 	case ModeAction::Update:
 		if (mTiming.TimeSinceFlag("mode_entered") >= sign_time)
 		{
@@ -670,5 +723,16 @@ void Game::ModeStartTurn(ModeAction action)
 			"Hero Turn", mPlayer->AP);
 		break;
 	}
+	}
+}
+
+void Game::ModeWait(ModeAction action)
+{
+	switch (action)
+	{
+	case ModeAction::Update:
+		if (mAnimators.empty())
+			PopMode();
+		break;
 	}
 }

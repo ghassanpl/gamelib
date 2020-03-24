@@ -62,7 +62,7 @@ enum class ObjectZ
 
 struct TileObject
 {
-	TileObject(Map* pm, ivec2 at) : mParentMap(pm), mPosition(at) {}
+	TileObject(Map* pm, ivec2 at) : mParentMap(pm), mPosition(at), mLastPosition(at) {}
 	virtual ~TileObject() = default;
 
 	Color Tint = Colors::White;
@@ -75,8 +75,20 @@ struct TileObject
 
 	Map* ParentMap() const { return mParentMap; }
 	ivec2 Position() const { return mPosition; }
+	ivec2 LastPosition() const { return mLastPosition; }
+	seconds_t MoveDelta() const { return mMoveDelta / move_speed; }
+
+	vec2 CameraPosition() const;
 
 	void MoveTo(ivec2 pos);
+
+	static constexpr seconds_t move_speed = 0.1;
+
+	virtual void Update(seconds_t dt)
+	{
+		if (mMoveDelta < move_speed)
+			mMoveDelta = std::min(move_speed, mMoveDelta + dt);
+	}
 
 	virtual std::string Name() const { return "[object]"; }
 	virtual std::string Image() const { return "error"; }
@@ -103,6 +115,8 @@ protected:
 
 	Map* mParentMap = nullptr;
 	ivec2 mPosition{};
+	ivec2 mLastPosition{};
+	seconds_t mMoveDelta = 1.0;
 
 };
 
@@ -311,8 +325,9 @@ struct RoomTile
 };
 
 constexpr float tile_width = 128;
+constexpr float _half_tile_width = tile_width / 2;
 constexpr vec2 tile_size = { tile_width, tile_width };
-constexpr float half_tile_size = tile_width / 2;
+constexpr vec2 half_tile_size = tile_size / 2.0f;
 constexpr auto wall_width = 10;
 constexpr auto shadow_size = 20;
 
@@ -375,6 +390,8 @@ struct Game : rsl::OSInterface
 	void Render();
 
 	void UpdateCamera();
+
+	void CameraFollow(TileObject* creature, bool wait = false);
 	
 	template <typename... ARGS>
 	void DrawText(ALLEGRO_FONT* font, vec2 position, Color const& color, Color const& background_color, Align align, std::string_view format, ARGS&&... args)
@@ -416,9 +433,24 @@ struct Game : rsl::OSInterface
 		if (mScriptContext.Suspended())
 		{
 			/// TODO: Setup the suspension state and anims and stuff
+			fmt::print("script suspended: {}\n", result->ToString());
 			return false;
 		}
 		return true;
+	}
+
+	template <typename... ARGS>
+	rsl::ValueRef Call(rsl::ValueRef const& self, std::string_view method_name, ARGS&&... args)
+	{
+		return mScriptContext.Call(self, method_name, std::forward<ARGS>(args)...);
+	}
+
+	template <typename T, typename... ARGS>
+	T Call(rsl::ValueRef const& self, std::string_view method_name, ARGS&&... args)
+	{
+		T result;
+		mScriptContext.FromValue(result, mScriptContext.Call(self, method_name, std::forward<ARGS>(args)...).Value());
+		return result;
 	}
 
 private:
@@ -469,6 +501,7 @@ private:
 	AllegroInput mInput{ mReporter };
 	ICamera mCamera;
 	vec2 mCameraTarget{};
+	//TileObject* mCameraTarget = nullptr;
 	float mCameraSpeed = 15.0f;
 	bool mCameraFocus = true;
 	PanZoomer mPanZoomer{ mInput, mCamera };
@@ -539,8 +572,13 @@ private:
 	void ModeEvilTurn(ModeAction action);
 	void ModeStartTurn(ModeAction action);
 
+	void ModeWait(ModeAction action);
+
+	std::vector<std::function<bool(seconds_t)>> mAnimators;
+
 	typedef void(Game::*GameMode)(ModeAction);
 
+	std::vector<GameMode> mModeStack;
 	GameMode mCurrentMode = &Game::ModePlayerMovement;
 	std::vector<TileObject*> mEvilObjects;
 	TileObject* mCurrentEvil = nullptr;
@@ -550,6 +588,8 @@ private:
 	void DoModeAction(ModeAction action);
 
 	void SwitchMode(GameMode mode);
+	void PushMode(GameMode mode);
+	void PopMode();
 
 	virtual void ReportSingle(rsl::ReportType type, rsl::ReportModule in_module, rsl::SourcePos const& pos, std::string_view message) override;
 };
