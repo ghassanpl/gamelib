@@ -111,6 +111,8 @@ struct TileObject
 	/// Returns whether it is done this turn
 	virtual bool UpdateEvilTurn() { return true; }
 
+	virtual bool UpdateHeroTurn() { return true; }
+
 protected:
 
 	Map* mParentMap = nullptr;
@@ -152,6 +154,7 @@ struct Creature : TileObject
 	virtual std::string Name() const override { return Class->Name; }
 	virtual std::string Image() const override { return Class->Image; }
 
+	bool SpendAP(int ap_cost = 1);
 };
 
 struct MonsterClass : CreatureClass
@@ -197,6 +200,10 @@ struct Monster : Creature
 	void MoveTowardPlayer();
 	void Wander();
 
+	bool HasPathToPlayer();
+	bool CalculatePathToPlayer();
+	bool MoveOnPath();
+
 	virtual bool UpdateEvilTurn() override;
 
 	rsl::ValueRef mScriptObject;
@@ -204,6 +211,13 @@ struct Monster : Creature
 	Direction DirToPlayer() const;
 
 	void AITurn();
+
+	virtual bool UpdateHeroTurn() override;
+
+protected:
+
+	ivec2 mLastPlayerPosition = { -1, -1 };
+	std::vector<ivec2> mPathToPlayer;
 };
 
 struct HeroClass : CreatureClass
@@ -363,6 +377,7 @@ struct Map
 	void DetermineVisibility(vec2 from_position);
 
 	bool CanCreatureMove(ivec2 pos, Direction dir);
+	bool CanCreatureMove(ivec2 pos, ivec2 new_pos);
 };
 
 struct Game : rsl::OSInterface

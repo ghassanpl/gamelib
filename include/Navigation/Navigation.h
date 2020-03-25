@@ -58,6 +58,8 @@ namespace gamelib::squares
 
 		bool HasCost(ivec2 pos) const noexcept { return !std::isnan(this->At(pos)->Cost); }
 
+		inline static double DefaultCostFunction(ivec2 a, ivec2 b) noexcept { return (double)glm::length(vec2(a - b)); }
+
 	protected:
 
 		std::vector<ivec2> ReconstructPath(ivec2 start, ivec2 goal) const;
@@ -172,6 +174,18 @@ namespace gamelib::squares
 
 		template <uint64_t FLAGS = ghassanpl::flag_bits(IterationFlags::OnlyValid, IterationFlags::Diagonals), typename WALL_FUNCTION>
 		void BuildWalls(WALL_FUNCTION&& wall_func);
+
+		using BaseNavigationGrid::BreadthFirstSearch;
+		/// Uses the `BlocksPassage` flag to determine whether tiles are adjacent
+		std::vector<ivec2> BreadthFirstSearch(ivec2 start, ivec2 goal, bool diagonals = true);
+
+		using BaseNavigationGrid::DijkstraSearch;
+		/// Uses the `BlocksPassage` flag to determine whether tiles are adjacent
+		std::vector<ivec2> DijkstraSearch(ivec2 start, ivec2 goal, double max_cost, bool diagonals = true);
+
+		using BaseNavigationGrid::AStarSearch;
+		/// Uses the `BlocksPassage` flag to determine whether tiles are adjacent
+		std::vector<ivec2> AStarSearch(ivec2 start, ivec2 goal, bool diagonals = true);
 
 		/*
 		template <uint64_t FLAGS = ghassanpl::flag_bits(IterationFlags::WithSelf, IterationFlags::OnlyValid), typename FUNC>

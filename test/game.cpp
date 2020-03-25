@@ -41,10 +41,14 @@ void Map::DetermineVisibility(vec2 from_position)
 bool Map::CanCreatureMove(ivec2 pos, Direction dir)
 {
 	const auto target_pos = pos + ToVector(dir);
-	if (!RoomGrid.IsValid(target_pos))
-		return false;
+	return CanCreatureMove(pos, target_pos);
+}
 
-	if (NavGrid.BlocksPassage(pos, target_pos))
+bool Map::CanCreatureMove(ivec2 pos, ivec2 target_pos)
+{
+	if (pos == target_pos) return true;
+	
+	if (!IsNeighbor(pos, target_pos) || !RoomGrid.IsValid(target_pos) || NavGrid.BlocksPassage(pos, target_pos))
 		return false;
 
 	for (auto& obj : RoomGrid.At(target_pos)->Objects)
@@ -153,6 +157,10 @@ void Game::Load()
 		monster_class->AddMethod(mScriptModule, "AttackPlayer", &Monster::AttackPlayer);
 		monster_class->AddMethod(mScriptModule, "CanMoveTowardPlayer", &Monster::CanMoveTowardPlayer);
 		monster_class->AddMethod(mScriptModule, "MoveTowardPlayer", &Monster::MoveTowardPlayer);
+
+		monster_class->AddMethod(mScriptModule, "HasPathToPlayer", &Monster::HasPathToPlayer);
+		monster_class->AddMethod(mScriptModule, "CalculatePathToPlayer", &Monster::CalculatePathToPlayer);
+		monster_class->AddMethod(mScriptModule, "MoveOnPath", &Monster::MoveOnPath);
 
 		mScriptModule.Link();
 	}
@@ -507,7 +515,7 @@ void Game::PopMode()
 
 void Game::ReportSingle(rsl::ReportType type, rsl::ReportModule in_module, rsl::SourcePos const& pos, std::string_view message)
 {
-	OSInterface::ReportSingle(type, in_module, pos, message);
+	//OSInterface::ReportSingle(type, in_module, pos, message);
 	if (type >= rsl::ReportType::Warning)
 	{
 		switch (type)
@@ -656,6 +664,9 @@ void Game::ModePlayerMovement(ModeAction action)
 		if (mPanZoomer.Update(mDT))
 			mCameraFocus = false;
 
+		for (auto& obj : mCurrentMap.Objects)
+			obj->UpdateHeroTurn();
+
 		if (mInput.WasButtonPressed("up"))
 			DirectionAction(Direction::Up);
 		else if (mInput.WasButtonPressed("left"))
@@ -735,4 +746,12 @@ void Game::ModeWait(ModeAction action)
 			PopMode();
 		break;
 	}
+}
+
+bool Creature::SpendAP(int ap_cost)
+{
+	if (AP < ap_cost)
+		return false;
+	AP -= ap_cost;
+	return true;
 }

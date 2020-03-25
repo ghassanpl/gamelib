@@ -8,7 +8,7 @@
 #include <glm/gtx/compatibility.hpp>
 #include <glm/gtx/component_wise.hpp>
 #include <glm/gtx/extend.hpp>
-#include <iosfwd>
+#include <iostream>
 
 using glm::vec2;
 using glm::ivec2;
@@ -119,7 +119,7 @@ namespace glm
 	inline trec2<T> operator+(tvec2<T> op, trec2<T> rec) noexcept { return { rec.p1 + op, rec.p2 + op }; }
 
 	template <typename T>
-	inline std::ostream& operator<<(std::ostream& strm, vec<2, T> b) { return strm << '(' << b.x << ',' << b.y << ')'; }
+	inline std::ostream& operator<<(std::ostream& strm, vec<2, T> b) { return strm << "(" << b.x << "," << b.y << ")"; }
 
 	template <typename T>
 	inline std::ostream& operator<<(std::ostream& strm, trec2<T> const& b) { return strm << '(' << b.p1.x << ',' << b.p1.y << ',' << b.p2.x << ',' << b.p2.y << ')'; }

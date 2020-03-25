@@ -62,7 +62,7 @@ namespace gamelib::squares
 			frontier.pop();
 
 			if (current == goal)
-				break;
+				return ReconstructPath(start, goal);
 
 			static constexpr auto Diagonals = DIAGONALS ? ghassanpl::flag_bits(Grid<TILE_DATA>::IterationFlags::Diagonals) : 0ULL;
 			this->ForEachNeighbor<ghassanpl::flag_bits(Grid<TILE_DATA>::IterationFlags::OnlyValid) | Diagonals>(current, [&](ivec2 next) {
@@ -76,7 +76,7 @@ namespace gamelib::squares
 			});
 		}
 
-		return ReconstructPath(start, goal);
+		return {};
 	}
 
 	template<typename TILE_DATA>
@@ -96,7 +96,7 @@ namespace gamelib::squares
 			auto current = GetSearchFrontierItem();
 
 			if (current == goal)
-				break;
+				return ReconstructPath(start, goal);
 
 			static constexpr auto Diagonals = DIAGONALS ? ghassanpl::flag_bits(Grid<TILE_DATA>::IterationFlags::Diagonals) : 0ULL;
 			this->ForEachNeighbor<ghassanpl::flag_bits(Grid<TILE_DATA>::IterationFlags::OnlyValid) | Diagonals>(current, [&](ivec2 next) {
@@ -112,7 +112,7 @@ namespace gamelib::squares
 			});
 		}
 
-		return ReconstructPath(start, goal);
+		return {};
 	}
 
 	template<typename TILE_DATA>
@@ -132,7 +132,7 @@ namespace gamelib::squares
 			auto current = GetSearchFrontierItem();
 
 			if (current == goal)
-				break;
+				return ReconstructPath(start, goal);
 
 			static constexpr auto Diagonals = DIAGONALS ? ghassanpl::flag_bits(Grid<TILE_DATA>::IterationFlags::Diagonals) : 0ULL;
 			this->ForEachNeighbor<ghassanpl::flag_bits(Grid<TILE_DATA>::IterationFlags::OnlyValid) | Diagonals>(current, [&](ivec2 next) {
@@ -149,7 +149,7 @@ namespace gamelib::squares
 			});
 		}
 
-		return ReconstructPath(start, goal);
+		return {};
 	}
 
 	template<typename TILE_DATA>
@@ -321,7 +321,6 @@ namespace gamelib::squares
 		std::vector<ivec2> path;
 
 		/// We do path simplification here already
-		auto last_dif = ivec2{ 0,0 };
 		auto last_pos = goal;
 		auto current = Predecessor(goal);
 		while (current != start)
@@ -329,11 +328,7 @@ namespace gamelib::squares
 			if (!this->IsValid(current))
 				return path;
 			auto dif = current - last_pos;
-			if (dif != last_dif)
-			{
-				last_dif = dif;
-				path.push_back(last_pos);
-			}
+			path.push_back(last_pos);
 			last_pos = current;
 			current = Predecessor(current);
 		}

@@ -43,21 +43,19 @@ namespace gamelib::squares
 		}
 	}
 
-	inline double len(ivec2 a, ivec2 b) noexcept { return (double)glm::length(vec2(a - b)); }
-
 	std::vector<ivec2> BlockNavigationGrid::DijkstraSearch(ivec2 start, ivec2 goal, double max_cost, bool diagonals)
 	{
 		if (diagonals)
 		{
 			return BaseNavigationGrid<BlockNavigationTile>::DijkstraSearch<true>(start, goal, [&, goal](ivec2 from, ivec2 to) {
 				return (to == goal || !BlocksPassage(to)) && (!IsDiagonalNeighbor(from, to) || (!BlocksPassage({ from.x, to.y }) && BlocksPassage({ to.x, from.y })));
-			}, max_cost, len);
+			}, max_cost, DefaultCostFunction);
 		}
 		else
 		{
 			return BaseNavigationGrid<BlockNavigationTile>::DijkstraSearch<false>(start, goal, [&, goal](ivec2 from, ivec2 to) {
 				return (to == goal || !BlocksPassage(to));
-			}, max_cost, len);
+			}, max_cost, DefaultCostFunction);
 		}
 	}
 
@@ -67,13 +65,13 @@ namespace gamelib::squares
 		{
 			return BaseNavigationGrid<BlockNavigationTile>::AStarSearch<true>(start, goal, [&, goal](ivec2 from, ivec2 to) {
 				return (to == goal || !BlocksPassage(to)) && (!IsDiagonalNeighbor(from, to) || (!BlocksPassage({ from.x, to.y }) && BlocksPassage({ to.x, from.y })));
-			}, len, len);
+			}, DefaultCostFunction, DefaultCostFunction);
 		}
 		else
 		{
 			return BaseNavigationGrid<BlockNavigationTile>::AStarSearch<false>(start, goal, [&, goal](ivec2 from, ivec2 to) {
 				return (to == goal || !BlocksPassage(to));
-			}, len, len);
+			}, DefaultCostFunction, DefaultCostFunction);
 		}
 	}
 
@@ -230,5 +228,21 @@ namespace gamelib::squares
 		}
 
 		return {};
+	}
+
+	std::vector<ivec2> WallNavigationGrid::AStarSearch(ivec2 start, ivec2 goal, bool diagonals)
+	{
+		if (diagonals)
+		{
+			return BaseNavigationGrid<WallNavigationTile>::AStarSearch<true>(start, goal, [&, goal](ivec2 from, ivec2 to) {
+				return (to == goal || !BlocksPassage(from, to)) && (!IsDiagonalNeighbor(from, to) || (!BlocksPassage(from, ivec2{ from.x, to.y }) && BlocksPassage(from, ivec2{ to.x, from.y })));
+			}, DefaultCostFunction, DefaultCostFunction);
+		}
+		else
+		{
+			return BaseNavigationGrid<WallNavigationTile>::AStarSearch<false>(start, goal, [&, goal](ivec2 from, ivec2 to) {
+				return (to == goal || !BlocksPassage(from, to));
+			}, DefaultCostFunction, DefaultCostFunction);
+		}
 	}
 }
