@@ -38,13 +38,13 @@ void Map::DetermineVisibility(vec2 from_position)
 	}
 }
 
-bool Map::CanCreatureMove(ivec2 pos, Direction dir)
+bool Map::CanCreatureMove(ivec2 pos, Direction dir) const
 {
 	const auto target_pos = pos + ToVector(dir);
 	return CanCreatureMove(pos, target_pos);
 }
 
-bool Map::CanCreatureMove(ivec2 pos, ivec2 target_pos)
+bool Map::CanCreatureMove(ivec2 pos, ivec2 target_pos) const
 {
 	if (pos == target_pos) return true;
 	
@@ -149,18 +149,25 @@ void Game::Load()
 			}
 		}
 
-		auto monster_class = mScriptModule.CreateNativeClass<Monster>(mScriptModule.GlobalNamespace(), "Monster", rsl::NativeClassType::RefType);
+		auto tile_object_class = mScriptModule.CreateNativeClass<TileObject>(mScriptModule.GlobalNamespace(), "TileObject", rsl::NativeClassType::RefType);
+		tile_object_class->AddMethod(mScriptModule, "Position", &TileObject::Position);
+		tile_object_class->AddMethod(mScriptModule, "LastPosition", &TileObject::LastPosition);
 
+		auto creature_class = mScriptModule.CreateNativeClass<Creature>(mScriptModule.GlobalNamespace(), "Creature", rsl::NativeClassType::RefType, tile_object_class);
+		creature_class->AddMethod(mScriptModule, "SpendAP", &Creature::SpendAP);
+		creature_class->AddMethod(mScriptModule, "GetAP", +[](Creature const* creature) { return creature->AP; });
+
+		auto monster_class = mScriptModule.CreateNativeClass<Monster>(mScriptModule.GlobalNamespace(), "Monster", rsl::NativeClassType::RefType, creature_class);
 		monster_class->AddMethod(mScriptModule, "CanSeePlayer", &Monster::CanSeePlayer);
 		monster_class->AddMethod(mScriptModule, "Wander", &Monster::Wander);
 		monster_class->AddMethod(mScriptModule, "CanAttackPlayer", &Monster::CanAttackPlayer);
 		monster_class->AddMethod(mScriptModule, "AttackPlayer", &Monster::AttackPlayer);
 		monster_class->AddMethod(mScriptModule, "CanMoveTowardPlayer", &Monster::CanMoveTowardPlayer);
 		monster_class->AddMethod(mScriptModule, "MoveTowardPlayer", &Monster::MoveTowardPlayer);
-
 		monster_class->AddMethod(mScriptModule, "HasPathToPlayer", &Monster::HasPathToPlayer);
 		monster_class->AddMethod(mScriptModule, "CalculatePathToPlayer", &Monster::CalculatePathToPlayer);
 		monster_class->AddMethod(mScriptModule, "MoveOnPath", &Monster::MoveOnPath);
+		monster_class->AddMethod(mScriptModule, "LastPlayerPosition", &Monster::LastPlayerPosition);
 
 		mScriptModule.Link();
 	}
@@ -207,7 +214,7 @@ void Game::Load()
 
 void Game::Start()
 {
-	UpdateCamera();
+	EndMove();
 	mCamera.SetWorldCenter(mCameraTarget);
 	mTiming.Reset();
 	SwitchMode(&Game::ModePlayerMovement);
@@ -358,7 +365,7 @@ void Game::Render()
 	al_flip_display();
 }
 
-void Game::UpdateCamera()
+void Game::EndMove()
 {
 	CameraFollow(mPlayer);
 	mCurrentMap.DetermineVisibility(mCurrentMap->TilePositionToWorldPosition(mPlayer->Position(), tile_size) + half_tile_size);
@@ -425,7 +432,7 @@ void Game::AddCommand(InputID input, std::string_view text, std::function<void()
 
 void Game::SpendAP()
 {
-	UpdateCamera();
+	EndMove();
 	mPlayer->AP--;
 	if (mPlayer->AP == 0)
 	{
@@ -441,23 +448,10 @@ void Game::DrawObjects(std::function<bool(TileObject*)> filter)
 
 		for (auto obj : tile->Objects)
 		{
-			if (!obj->Visible() || obj->Position() != pos || filter(obj))
+			if (obj->Position() != pos || filter(obj) || !obj->VisibleToPlayer())
 				continue;
-
-			bool visible = obj->ShowInFog();
-			if (!visible)
-			{
-				for (int x = 0; x < obj->Size.x; x++)
-					for (int y = 0; y < obj->Size.y; y++)
-						if (mCurrentMap.NavGrid.Visible(pos + ivec2{ x, y }))
-						{
-							visible = true;
-							break;
-						}
-			}
-
-			if (visible)
-				obj_to_draw.push_back(obj);
+			
+			obj_to_draw.push_back(obj);
 		}
 	});
 
@@ -585,6 +579,31 @@ void TileObject::MoveTo(ivec2 pos)
 	mParentMap->RoomGrid.At(mPosition)->Objects.insert(this);
 }
 
+bool TileObject::VisibleToPlayer() const
+{
+	if (!Visible())
+		return false;
+	if (!ShowInFog())
+	{
+		for (int x = 0; x < Size.x; x++)
+			for (int y = 0; y < Size.y; y++)
+				if (mParentMap->NavGrid.Visible(mPosition + ivec2{ x, y }))
+				{
+					return true;
+				}
+	}
+	else
+	{
+		for (int x = 0; x < Size.x; x++)
+			for (int y = 0; y < Size.y; y++)
+				if (mParentMap->NavGrid.WasSeen(mPosition + ivec2{ x, y }))
+				{
+					return true;
+				}
+	}
+	return false;
+}
+
 bool Door::PlayerBumped(Direction from)
 {
 	if (!Open)
@@ -691,11 +710,15 @@ void Game::ModeEndTurn(ModeAction action)
 		for (auto& obj : mCurrentMap.Objects)
 			if (obj->StartEvilTurn())
 				mEvilObjects.push_back(obj.get());
+		
 		NextEvil();
 		if (!mCurrentEvil)
+		{
 			SwitchMode(&Game::ModePlayerMovement);
-		else
-			CameraFollow(mCurrentEvil);
+			break;
+		}
+
+		//CameraFollow(mCurrentEvil);
 		break;
 	case ModeAction::Update:
 		if (mTiming.TimeSinceFlag("mode_entered") >= sign_time)

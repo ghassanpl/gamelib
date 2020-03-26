@@ -47,6 +47,14 @@ using namespace gamelib::squares;
 struct Game;
 struct Map;
 
+namespace glm
+{
+	inline rsl::Value to_value(rsl::ExecutionContext const& exe, ivec2 const& v)
+	{
+		return exe.ToValue(v.x, v.y);
+	}
+}
+
 enum class ObjectZ
 {
 	UnderFloor = -1,
@@ -112,6 +120,8 @@ struct TileObject
 	virtual bool UpdateEvilTurn() { return true; }
 
 	virtual bool UpdateHeroTurn() { return true; }
+
+	virtual bool VisibleToPlayer() const;
 
 protected:
 
@@ -203,6 +213,8 @@ struct Monster : Creature
 	bool HasPathToPlayer();
 	bool CalculatePathToPlayer();
 	bool MoveOnPath();
+
+	ivec2 LastPlayerPosition() const { return mLastPlayerPosition; }
 
 	virtual bool UpdateEvilTurn() override;
 
@@ -376,8 +388,8 @@ struct Map
 
 	void DetermineVisibility(vec2 from_position);
 
-	bool CanCreatureMove(ivec2 pos, Direction dir);
-	bool CanCreatureMove(ivec2 pos, ivec2 new_pos);
+	bool CanCreatureMove(ivec2 pos, Direction dir) const;
+	bool CanCreatureMove(ivec2 pos, ivec2 new_pos) const;
 };
 
 struct Game : rsl::OSInterface
@@ -404,7 +416,7 @@ struct Game : rsl::OSInterface
 
 	void Render();
 
-	void UpdateCamera();
+	void EndMove();
 
 	void CameraFollow(TileObject* creature, bool wait = false);
 	

@@ -9,8 +9,7 @@ end
 class GoblinGuard extends BaseMonster
 
 	func StartEvilTurn()
-		#return monster.CanSeePlayer() || monster.HasPathToPlayer()
-		return true
+		return monster.CanSeePlayer() || monster.HasPathToPlayer() || monster.LastPlayerPosition() != monster.Position()
 	end
 
 	func UpdateEvilTurn()

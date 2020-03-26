@@ -118,8 +118,9 @@ bool Monster::MoveOnPath()
 
 	mPathToPlayer.pop_back();
 	MoveTo(next_pos);
-	ParentMap()->ParentGame->CameraFollow(this, true);
-	fmt::print("yay!\n");
+	if (VisibleToPlayer())
+		ParentMap()->ParentGame->CameraFollow(this, true);
+	//fmt::print("yay!\n");
 	return true;
 }
 
