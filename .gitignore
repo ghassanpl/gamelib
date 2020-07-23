@@ -1,0 +1,10 @@
+.vs/
+build/
+old/
+test/x64/
+x64/
+bin/shared/
+bin/data/src_gfx/
+src_gfx/
+bin/
+include/other/

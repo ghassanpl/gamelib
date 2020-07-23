@@ -6,10 +6,12 @@
 #include <allegro5/transformations.h>
 
 inline static constexpr ALLEGRO_TRANSFORM TransformIdentity = {
-	{ { 1.0f, 0.0f, 0.0f, 0.0f},
-{ 0.0f, 1.0f, 0.0f, 0.0f},
-{0.0f, 0.0f, 1.0f, 0.0f },
-	 {0.0f, 0.0f, 0.0f, 1.0f }}
+	{ 
+		{ 1.0f, 0.0f, 0.0f, 0.0f },
+		{ 0.0f, 1.0f, 0.0f, 0.0f },
+		{ 0.0f, 0.0f, 1.0f, 0.0f },
+		{ 0.0f, 0.0f, 0.0f, 1.0f }
+	}
 };
 
 inline vec2 TransformPoint(ALLEGRO_TRANSFORM const& transform, vec2 point)

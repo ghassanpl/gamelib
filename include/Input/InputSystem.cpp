@@ -29,19 +29,19 @@ namespace gamelib
 		mPlayers[to_input.Player].Mappings[to_input.ActionID].push_back(Mapping{ of_device, {physical_button, InvalidDeviceInputID} });
 	}
 
-	bool IInputSystem::IsButtonPressed(InputID input_id)
+	bool IInputSystem::IsButtonPressed(Input input_id)
 	{
-		if (mPlayers.empty()) return false;
-
-		auto& player = mPlayers.begin()->second;
-		if (auto it = player.Mappings.find(input_id); it != player.Mappings.end())
+		if (auto player = GetPlayer(input_id.Player))
 		{
-			for (auto& mapping : it->second)
+			if (auto it = player->Mappings.find(input_id.ActionID); it != player->Mappings.end())
 			{
-				if (auto device = GetInputDevice(mapping.DeviceID))
+				for (auto& mapping : it->second)
 				{
-					if (device->GetInputStateDigital(mapping.Inputs[0]))
-						return true;
+					if (auto device = GetInputDevice(mapping.DeviceID))
+					{
+						if (device->GetInputStateDigital(mapping.Inputs[0]))
+							return true;
+					}
 				}
 			}
 		}
@@ -53,19 +53,19 @@ namespace gamelib
 		return GetMouse()->GetInputStateDigital((DeviceInputID)but);
 	}
 
-	bool IInputSystem::WasButtonPressed(InputID input_id)
+	bool IInputSystem::WasButtonPressed(Input input_id)
 	{
-		if (mPlayers.empty()) return false;
-
-		auto& player = mPlayers.begin()->second;
-		if (auto it = player.Mappings.find(input_id); it != player.Mappings.end())
+		if (auto player = GetPlayer(input_id.Player))
 		{
-			for (auto& mapping : it->second)
+			if (auto it = player->Mappings.find(input_id.ActionID); it != player->Mappings.end())
 			{
-				if (auto device = GetInputDevice(mapping.DeviceID))
+				for (auto& mapping : it->second)
 				{
-					if (device->GetInputStateDigital(mapping.Inputs[0]) && !device->GetInputStateLastFrameDigital(mapping.Inputs[0]))
-						return true;
+					if (auto device = GetInputDevice(mapping.DeviceID))
+					{
+						if (device->GetInputStateDigital(mapping.Inputs[0]) && !device->GetInputStateLastFrameDigital(mapping.Inputs[0]))
+							return true;
+					}
 				}
 			}
 		}
@@ -76,7 +76,7 @@ namespace gamelib
 	{
 		return GetMouse()->GetInputStateDigital((DeviceInputID)but) && !GetMouse()->GetInputStateLastFrameDigital((DeviceInputID)but);
 	}
-	
+
 	float IInputSystem::GetAxis(Input of_input)
 	{
 		auto player = GetPlayer(of_input.Player);
@@ -99,7 +99,7 @@ namespace gamelib
 				}
 			}
 		}
-		return {};
+		return 0.0f;
 	}
 
 	vec2 IInputSystem::GetAxis2D(Input of_input)

@@ -4,6 +4,7 @@
 #include <array>
 #include <iostream>
 #include "../include/Includes/Assuming.h"
+#include <span>
 
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
@@ -54,7 +55,7 @@ static MessageBoxResult ShowMessageBox(
 	std::wstring_view title,
 	MessageBoxIcon icon,
 	std::wstring_view description,
-	gsl::span<std::wstring_view const> buttons,
+	std::span<std::wstring_view const> buttons,
 	size_t default_button = 0,
 	std::wstring_view long_description = {},
 	std::wstring_view checkbox_text = {},
@@ -66,7 +67,7 @@ MessageBoxResult ShowMessageBox(
 	std::wstring_view title,
 	MessageBoxIcon icon,
 	std::wstring_view description,
-	gsl::span<std::wstring_view const> buttons,
+	std::span<std::wstring_view const> buttons,
 	size_t default_button,
 	std::wstring_view long_description,
 	std::wstring_view checkbox_text,

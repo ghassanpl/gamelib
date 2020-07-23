@@ -48,6 +48,7 @@ namespace gamelib::squares
 
 	inline constexpr Direction Opposite(Direction dir) { return dir + 4; }
 	inline constexpr Direction NextCardinal(Direction dir) { return dir + 2; }
+	inline constexpr Direction PrevCardinal(Direction dir) { return dir + 6; }
 
 	namespace {
 		static constexpr const int DirectionToOffset[] = { 1, 1, 0, -1, -1, -1, 0, 1 };
@@ -84,7 +85,7 @@ namespace gamelib::squares
 		return degrees_t{ float(int(dir) * 45.0) };
 	}
 
-	inline constexpr ivec2 ToVector(Direction dir)
+	inline GLM_CONSTEXPR ivec2 ToVector(Direction dir)
 	{
 		return ivec2{ HorizontalOffset(dir), VerticalOffset(dir) };
 	}

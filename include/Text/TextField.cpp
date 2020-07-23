@@ -196,7 +196,7 @@ namespace gamelib
 		float y = 0;
 		for (auto& paragraph : mParagraphs)
 		{
-			auto paragraph_glyphs = gsl::span<Glyph>{ mGlyphs }.subspan(paragraph.StartGlyph, paragraph.EndGlyph - paragraph.StartGlyph);
+			auto paragraph_glyphs = std::span<Glyph>{ mGlyphs }.subspan(paragraph.StartGlyph, paragraph.EndGlyph - paragraph.StartGlyph);
 			paragraph.Reflow(paragraph_glyphs, mBounds.width());
 			paragraph.Bounds.set_position(0, y);
 			y += paragraph.Bounds.height();
@@ -228,7 +228,7 @@ namespace gamelib
 		return std::nullopt;
 	}
 	
-	void Paragraph::Reflow(gsl::span<Glyph> glyphs, float max_width)
+	void Paragraph::Reflow(std::span<Glyph> glyphs, float max_width)
 	{
 		Lines.clear();
 

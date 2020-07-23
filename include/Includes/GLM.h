@@ -1,4 +1,5 @@
 #pragma once
+//#define GLM_FORCE_SSE2 1
 #define GLM_ENABLE_EXPERIMENTAL 1
 #include <glm/vec2.hpp>
 #include <glm/vec4.hpp>

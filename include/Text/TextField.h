@@ -24,7 +24,7 @@ namespace gamelib
 	struct Line
 	{
 		rec2 Bounds{};
-		gsl::span<Glyph> Glyphs;
+		std::span<Glyph> Glyphs;
 	};
 
 	struct Paragraph
@@ -41,7 +41,7 @@ namespace gamelib
 		/// TODO: Line spacing
 		/// TODO: Margins
 
-		void Reflow(gsl::span<Glyph> glyphs, float max_width);
+		void Reflow(std::span<Glyph> glyphs, float max_width);
 	};
 
 	struct Style
@@ -77,7 +77,7 @@ namespace gamelib
 
 		void Draw();
 
-		gsl::span<Glyph const> Glyphs() const { return mGlyphs; }
+		std::span<Glyph const> Glyphs() const { return mGlyphs; }
 
 	private:
 

@@ -1,8 +1,11 @@
 #include "AllegroInput.h"
 #include "InputSystem.h"
 #include "../Includes/MagicEnum.h"
+#include <allegro5/display.h>
 #include <allegro5/keyboard.h>
 #include <allegro5/joystick.h>
+#include <allegro5/mouse.h>
+#include <allegro5/mouse_cursor.h>
 #include "../Includes/Assuming.h"
 
 namespace gamelib
@@ -219,6 +222,54 @@ namespace gamelib
 		LastFrameState = CurrentState;
 		CurrentState[Wheel0] = 0;
 		CurrentState[Wheel1] = 0;
+	}
+
+	void AllegroMouse::ShowCursor(bool show)
+	{
+		show ? al_show_mouse_cursor(al_get_current_display()) : al_hide_mouse_cursor(al_get_current_display());
+		mCursorVisible = show;
+	}
+
+	bool AllegroMouse::IsCursorVisible() const
+	{
+		return mCursorVisible;
+	}
+
+	bool AllegroMouse::IsCursorShapeAvailable(MouseCursorShape shape) const
+	{
+		return int(shape) <= 19;
+	}
+
+	void AllegroMouse::SetCursorShape(MouseCursorShape shape)
+	{
+		if (IsCursorShapeAvailable(shape))
+			al_set_system_mouse_cursor(al_get_current_display(), ALLEGRO_SYSTEM_MOUSE_CURSOR(int(shape)));
+	}
+
+	bool AllegroMouse::IsCustomCursorShapeAvailable(std::string_view shape) const
+	{
+		return false;
+	}
+
+	void AllegroMouse::SetCustomCursorShape(std::string_view name)
+	{
+	}
+
+	void AllegroMouse::SetCustomCursorShape(void* resource, MouseCursorShape replace, vec2 hotspot)
+	{
+		/// al_destroy_mouse_cursor
+		/// al_create_mouse_cursor
+		/// al_set_mouse_cursor
+	}
+
+	bool AllegroMouse::CanWarp() const
+	{
+		return true;
+	}
+
+	void AllegroMouse::Warp(vec2 pos)
+	{
+		al_set_mouse_xy(al_get_current_display(), int(pos.x), int(pos.y));
 	}
 
 	void AllegroMouse::MouseWheelScrolled(float delta, unsigned wheel)

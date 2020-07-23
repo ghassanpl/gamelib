@@ -2,7 +2,7 @@
 
 #include <type_traits>
 #include <iosfwd>
-#include <gsl/span>
+#include <span>
 
 using seconds_t = double;
 using herz_t = double;
@@ -52,5 +52,5 @@ using std::filesystem::path;
 template <typename IT>
 auto make_span(IT start, IT end)
 {
-	return gsl::span<typename std::iterator_traits<IT>::value_type>{ std::to_address(start), std::distance(start, end) };
+	return std::span<typename std::iterator_traits<IT>::value_type>{ std::to_address(start), std::distance(start, end) };
 }

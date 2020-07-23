@@ -190,6 +190,7 @@
     <ClInclude Include="include\Serialization\IArchiver.h" />
     <ClInclude Include="include\Serialization\IOStreamBuffers.h" />
     <ClInclude Include="include\Serialization\StringBuffers.h" />
+    <ClInclude Include="include\Support\IOC.h" />
     <ClInclude Include="include\Text\TextField.h" />
     <ClInclude Include="include\Timing.h" />
     <ClInclude Include="include\Timing.impl.h" />

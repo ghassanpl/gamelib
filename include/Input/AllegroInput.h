@@ -3,6 +3,7 @@
 #include "../Common.h"
 #include "InputDevice.h"
 #include "InputSystem.h"
+#include <array>
 
 struct ALLEGRO_JOYSTICK;
 
@@ -81,6 +82,17 @@ namespace gamelib
 		virtual DeviceInputID GetXAxisInput() const override { return XAxis; }
 		virtual DeviceInputID GetYAxisInput() const override { return YAxis; }
 
+		virtual void ShowCursor(bool show) override;
+		virtual bool IsCursorVisible() const override;
+		virtual bool IsCursorShapeAvailable(MouseCursorShape shape) const override;
+		virtual void SetCursorShape(MouseCursorShape shape) override;
+		virtual bool IsCustomCursorShapeAvailable(std::string_view shape) const override;
+		virtual void SetCustomCursorShape(std::string_view name) override;
+		virtual void SetCustomCursorShape(void* resource, MouseCursorShape replace = {}, vec2 hotspot = {}) override;
+		virtual bool CanWarp() const override;
+		virtual void Warp(vec2 pos) override;
+
+
 		virtual void MouseWheelScrolled(float delta, unsigned wheel);
 		virtual void MouseButtonPressed(MouseButton button);
 		virtual void MouseButtonReleased(MouseButton button);
@@ -101,6 +113,7 @@ namespace gamelib
 
 		std::array<double, TotalInputs> CurrentState{};
 		std::array<double, TotalInputs> LastFrameState{};
+		bool mCursorVisible = true;
 	};
 
 	struct AllegroGamepad : IXboxGamepadDevice

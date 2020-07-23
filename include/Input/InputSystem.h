@@ -2,6 +2,8 @@
 
 #include <compare>
 #include <map>
+#include <any>
+#include <concepts>
 
 #include "InputDevice.h"
 #include "../ErrorReporter.h"
@@ -34,9 +36,27 @@ namespace gamelib
 		static constexpr InputDeviceIndex MouseDeviceID = 1;
 		static constexpr InputDeviceIndex FirstGamepadDeviceID = 2;
 
+		/// TODO: Helpers/devices for:
+		/// - Accelerometer (with subdevices)
+		///		- Acceleration
+		///		- Gravity
+		///		- Gyro/Orientation
+		/// - Compass 
+		/// - Environment
+		///		- Temperature, Light, Magnetic field, Pressure, Humidity
+		/// - Proximity
+		/// - Touchpad
+		/// - GPS
+		/// - Steps
+		/// - Altitude
+		/// 
+		/// TODO: Maybe add a GenericDeviceType enum? { Keyboard, Mouse, Gamepad, Accelerometer, Compass, EnvironmentSensor, GPS, ... }
+
 		IKeyboardDevice* GetKeyboard() const { return mKeyboard; }
 		IMouseDevice* GetMouse() const { return mMouse; }
 		IGamepadDevice* GetFirstGamepad() const { return mFirstGamepad; }
+
+		std::vector<IInputDevice*> GetAllInputDevices() const;
 
 		struct Input
 		{
@@ -44,19 +64,53 @@ namespace gamelib
 			PlayerID Player = {};
 
 			Input() = default;
-			Input(InputID id, PlayerID player = {}) : ActionID(id), Player(player) {}
+			
+			template <typename... ARGS>
+			Input(ARGS&&... args) requires std::is_constructible_v<InputID, ARGS...> 
+				: ActionID(std::forward<ARGS>(args)...)
+			{
+			}
+
+			template <typename... ARGS>
+			Input(PlayerID player, ARGS&&... args) requires std::is_constructible_v<InputID, ARGS...> 
+				: Input(std::forward<ARGS>(args)...), Player(player)
+			{
+			}
+			
+			template <typename... ARGS>
+			Input(void const* player, ARGS&&... args) requires std::is_constructible_v<InputID, ARGS...> 
+				: Input(std::forward<ARGS>(args)..., reinterpret_cast<PlayerID>(player))
+			{
+			}
 
 #ifndef __clang__
 			auto operator<=>(Input const& other) const noexcept = default;
 #endif
 		};
 
-		void MapKey(KeyboardKey key, InputID to_input) { MapButton((DeviceInputID)key, KeyboardDeviceID, to_input); }
-		void MapMouse(MouseButton mouse_button, InputID to_input) { MapButton((DeviceInputID)mouse_button, MouseDeviceID, to_input); }
-		void MapGamepad(XboxGamepadButton pad_button, InputID to_input) { MapButton((DeviceInputID)pad_button, FirstGamepadDeviceID, to_input); }
-		void MapNavigation(UINavigationInput ui_input, InputID to_input);
-
-		void MapKeyAndButton(InputID to_input, KeyboardKey key, XboxGamepadButton pad_button)
+		void MapKey(KeyboardKey key, Input to_input) { MapButton((DeviceInputID)key, KeyboardDeviceID, to_input); }
+		void MapMouse(MouseButton mouse_button, Input to_input) { MapButton((DeviceInputID)mouse_button, MouseDeviceID, to_input); }
+		void MapGamepad(XboxGamepadButton pad_button, Input to_input) { MapButton((DeviceInputID)pad_button, FirstGamepadDeviceID, to_input); }
+		void MapNavigation(UINavigationInput ui_input, Input to_input);
+		
+		/// TODO: void BindButtonPressed(Input button, func callback); /// maybe Bind* functions should return RegisteredCallbackID ?
+		/// TODO: void BindButtonReleased(Input button, func callback);
+		/// TODO: void BindNavigationPressed(UINavigationInput input, func callback);
+		/// TODO: void BindNavigationReleased(UINavigationInput input, func callback);
+		/// TODO: void BindGamepadConnectionEvent(func callback);
+		/// TODO: void BindDeviceStatusEvent(func callback);
+		/// TODO: void BindInputChanged(Input input, func callback);
+		/// TODO: void BindInputPropertiesChanged(Input input, func callback);/// 
+		/// TODO: void UnbindCallback(RegisteredCallbackID id);
+		/// 
+		/// struct SequenceElement { InputID input; seconds_t time; };
+		/// TODO: void MapSequence(std::span<SequenceElement> elements, InputID to_input);
+		
+		/// TODO: Unmap(???) /// Maybe Map* functions should return a MappingID ?
+		
+		/// TODO: Screen buttons/joysticks
+		
+		void MapKeyAndButton(Input to_input, KeyboardKey key, XboxGamepadButton pad_button)
 		{
 			MapKey(key, to_input);
 			MapGamepad(pad_button, to_input);
@@ -66,13 +120,14 @@ namespace gamelib
 		void MapAxis1D(DeviceInputID physical_axis, InputDeviceIndex of_device, Input to_input);
 		void MapAxis2D(DeviceInputID physical_axis1, DeviceInputID physical_axis2, InputDeviceIndex of_device, Input to_input);
 
-		void MapButtonToAxis(DeviceInputID physical_button, InputDeviceIndex of_device, double to_axis_value, Input of_input);
+		void MapButtonToAxis(DeviceInputID physical_button, InputDeviceIndex of_device, double to_pressed_value, double and_released_value, Input of_input);
+		/// mapPhysicalButton:ofDevice:toPressedValue:andReleasedValue:ofAxisInput:
 
-		bool IsButtonPressed(InputID input_id);
+		bool IsButtonPressed(Input input_id);
 		bool IsButtonPressed(MouseButton but);
 		bool IsKeyPressed(KeyboardKey key);
 
-		bool WasButtonPressed(InputID input_id);
+		bool WasButtonPressed(Input input_id);
 		bool WasButtonPressed(MouseButton but);
 		bool WasKeyPressed(KeyboardKey key);
 
@@ -86,6 +141,9 @@ namespace gamelib
 
 		float GetAxis(Input of_input);
 		vec2 GetAxis2D(Input of_input);
+
+		void ResetInput(Input input);
+		seconds_t GetInputTimePressed(Input input);
 
 		virtual vec2 GetMousePosition() const;
 
@@ -140,4 +198,14 @@ namespace gamelib
 
 		void DebugInput();
 	};
+
+	template <typename USER_DATA>
+	struct InputInformation : USER_DATA
+	{
+		InputID ID{};
+	};
+
+	/// A utility map that maps input ids to any additional information you may wish to store
+	template <typename USER_DATA>
+	using InputInfos = std::map<InputID, InputInformation<USER_DATA>, std::less<>>;
 }

@@ -1,4 +1,5 @@
 #include "game.h"
+#include <gtest/gtest.h>
 
 int ToAllegro(HorizontalAlign align)
 {
@@ -13,8 +14,11 @@ int ToAllegro(HorizontalAlign align)
 	}
 }
 
-int main()
+int main(int argc, char** argv)
 {
+	::testing::InitGoogleTest(&argc, argv);
+	RUN_ALL_TESTS();
+
 	Game game;
 	game.Init();
 	game.Load();

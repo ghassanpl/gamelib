@@ -169,11 +169,11 @@ namespace gamelib::squares
 		return ForEachInRect<FLAGS>(rect, std::forward<FUNC>(func));
 	}
 
-	std::set<ivec2> RasterizePolygon(gsl::span<vec2> points, vec2 _tile_size);
+	std::set<ivec2> RasterizePolygon(std::span<vec2> points, vec2 _tile_size);
 
 	template<typename TILE_DATA>
 	template<uint64_t FLAGS, typename FUNC>
-	auto Grid<TILE_DATA>::ForEachInPolygon(gsl::span<vec2> poly_points, vec2 tile_size, FUNC&& func) const
+	auto Grid<TILE_DATA>::ForEachInPolygon(std::span<vec2> poly_points, vec2 tile_size, FUNC&& func) const
 	{
 		return ForEachInSet(RasterizePolygon(poly_points, tile_size), std::forward<FUNC>(func));
 	}

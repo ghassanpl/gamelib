@@ -60,6 +60,8 @@ namespace gamelib
 		Emulated,
 		/// Whether this button can repeat its 'pressed' events
 		CanRepeat,
+		/// Whether this input can have its polling frequency changed
+		CanChangeUpdateFrequency,
 	};
 
 	enum class InputDeviceFlags
@@ -99,6 +101,8 @@ namespace gamelib
 		double NeutralValue = 0;
 		double MaxValue = 1;
 		double StepSize = 0;
+
+		herz_t UpdateFrequency = std::numeric_limits<herz_t>::max();
 
 		std::string GlyphURL;
 
@@ -166,6 +170,7 @@ namespace gamelib
 		virtual bool GetInputStateDigital(DeviceInputID input) const = 0;
 		virtual double GetInputStateLastFrame(DeviceInputID input) const = 0;
 		virtual bool GetInputStateLastFrameDigital(DeviceInputID input) const = 0;
+		virtual bool SetInputUpdateFrequency(herz_t freq) { return false; }
 
 		virtual InputProperties GetInputProperties(DeviceInputID input) const = 0;
 
@@ -183,7 +188,7 @@ namespace gamelib
 		virtual OutputProperties GetOutputProperties(DeviceOutputID input) const;
 		virtual void SetOutput(DeviceOutputID index, glm::vec3 value) {}
 		virtual void ResetOutput(DeviceOutputID index) {}
-		virtual void SendOutputData(DeviceOutputID index, gsl::span<const uint8_t> data) {}
+		virtual void SendOutputData(DeviceOutputID index, std::span<const uint8_t> data) {}
 		virtual void EnableOutput(DeviceOutputID index, bool enable) {}
 
 		/// TODO: Data
@@ -201,7 +206,6 @@ namespace gamelib
 			ExternalAccu,
 			Unknown
 		};
-
 		virtual PowerSource GetPowerSource() const { return IInputDevice::PowerSource::Unknown; }
 		virtual enum_flags<PowerSource> AvailablePowerSources() const { return enum_flags<PowerSource>{}; }
 
@@ -223,6 +227,8 @@ namespace gamelib
 			AutoOffTime, /// float, in seconds
 			Range, /// float, in cm
 			Charge, /// float, 0 - 1
+			PowerDraw, /// float, in amperes
+			InternalTemperature, /// float, in C
 		};
 
 		virtual bool IsNumberPropertyValid(NumberProperty property) const = 0;
@@ -257,6 +263,34 @@ namespace gamelib
 		virtual bool GetNavigationLastFrame(UINavigationInput input) const override;
 	};
 
+	enum class MouseCursorShape
+	{
+		None,
+		Default,
+		Arrow,
+		Busy, /// or 'Wait'
+		Question, /// or 'Help'
+		Edit, /// or 'IBeam'
+		Move,
+		ResizeN,
+		ResizeW,
+		ResizeS,
+		ResizeE,
+		ResizeNW,
+		ResizeSW,
+		ResizeSE,
+		ResizeNE,
+		Progress,
+		Precision, /// or 'Crosshair'
+		Link, /// or 'Hand'
+		AltSelect, /// or 'UpArrow'
+		Unavailable,
+
+		Drag,
+		CanDrop,
+		CannotDrop,
+	};
+
 	struct IMouseDevice : virtual IInputDevice
 	{
 		using IInputDevice::IInputDevice;
@@ -266,6 +300,20 @@ namespace gamelib
 
 		virtual DeviceInputID GetXAxisInput() const = 0;
 		virtual DeviceInputID GetYAxisInput() const = 0;
+
+		virtual void ShowCursor(bool show) {}
+		virtual bool IsCursorVisible() const { return true; }
+		virtual bool IsCursorShapeAvailable(MouseCursorShape shape) const { return shape == MouseCursorShape::Default; }
+		virtual void SetCursorShape(MouseCursorShape shape) {}
+		virtual bool IsCustomCursorShapeAvailable(std::string_view shape) const { return false; }
+		virtual void SetCustomCursorShape(std::string_view name) {}
+		virtual void SetCustomCursorShape(void* resource, MouseCursorShape replace = {}, vec2 hotspot = {}) {}
+
+		virtual bool CanWarp() const { return false; }
+		virtual void Warp(vec2 pos) {}
+
+		/// TODO: Locking/constraining/trapping
+		/// see al_grab_mouse
 
 		virtual bool IsValidNavigation(UINavigationInput input) const override;
 		virtual bool GetNavigation(UINavigationInput input) const override;

@@ -25,9 +25,17 @@ inline int clz(unsigned long long v)
 }
 #define FMT_BUILTIN_CLZLL clz
 #endif
+#ifdef _WIN32
+#undef _WIN32
+#define Q_WIN32
+#endif
 #include <fmt/format.h>
 #include <fmt/ostream.h>
 #include <fmt/chrono.h>
+#ifdef Q_WIN32
+#undef Q_WIN32
+#define _WIN32
+#endif
 
 #define GAMELIB_FORMAT
 #ifdef GAMELIB_GLM

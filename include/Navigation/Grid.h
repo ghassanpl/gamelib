@@ -56,7 +56,7 @@ namespace gamelib::squares
 		auto ForEach(FUNC&& func) const;
 
 		template <uint64_t FLAGS = ghassanpl::flag_bits(IterationFlags::OnlyValid), typename FUNC>
-		auto ForEachInPolygon(gsl::span<vec2> poly_points, vec2 tile_size, FUNC&& func) const;
+		auto ForEachInPolygon(std::span<vec2> poly_points, vec2 tile_size, FUNC&& func) const;
 
 		/// Function: LineCast
 		/// Return: Whether the line between `start` and `end` is free of blocing tiles, as determined by `blocks_func`
@@ -83,7 +83,7 @@ namespace gamelib::squares
 		int Width() const noexcept { return mWidth; }
 		int Height() const noexcept { return mHeight; }
 		ivec2 Size() const noexcept { return { mWidth, mHeight }; }
-		gsl::span<TILE_DATA const> Tiles() const { return mTiles; }
+		std::span<TILE_DATA const> Tiles() const { return mTiles; }
 
 		vec2 TilePositionToWorldPosition(ivec2 tile_pos, vec2 tile_size) const { return vec2(tile_pos) * tile_size; }
 		ivec2 WorldPositionToTilePosition(vec2 world_pos, vec2 tile_size) const { return ivec2(glm::floor(world_pos / tile_size)); }

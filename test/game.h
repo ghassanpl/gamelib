@@ -22,6 +22,7 @@
 #include <Colors.h>
 #include <Debugger.h>
 #include <ErrorReporter.h>
+#include <Support/IOC.h>
 #include <Random.h>
 #include <Timing.h>
 #include <Navigation/Squares.h>
@@ -45,7 +46,6 @@ using namespace gamelib;
 using namespace gamelib::squares;
 
 struct Game;
-struct Map;
 
 namespace glm
 {
@@ -55,344 +55,7 @@ namespace glm
 	}
 }
 
-enum class ObjectZ
-{
-	UnderFloor = -1,
-	Floor = 0,
-	Furniture,
-	Items,
-	Monsters,
-	Heroes,
-	Walls,
-
-	Ceiling = 100,
-};
-
-struct TileObject
-{
-	TileObject(Map* pm, ivec2 at) : mParentMap(pm), mPosition(at), mLastPosition(at) {}
-	virtual ~TileObject() = default;
-
-	Color Tint = Colors::White;
-	ivec2 Size{ 1,1 };
-	Direction WallPosition = Direction::None;
-	//enum_flags<ObjectFlags> Flags;
-	int RotationFlags = 0;
-
-	ALLEGRO_BITMAP* Texture;
-
-	Map* ParentMap() const { return mParentMap; }
-	ivec2 Position() const { return mPosition; }
-	ivec2 LastPosition() const { return mLastPosition; }
-	seconds_t MoveDelta() const { return mMoveDelta / move_speed; }
-
-	vec2 CameraPosition() const;
-
-	void MoveTo(ivec2 pos);
-
-	static constexpr seconds_t move_speed = 0.1;
-
-	virtual void Update(seconds_t dt)
-	{
-		if (mMoveDelta < move_speed)
-			mMoveDelta = std::min(move_speed, mMoveDelta + dt);
-	}
-
-	virtual std::string Name() const { return "[object]"; }
-	virtual std::string Image() const { return "error"; }
-
-	virtual ObjectZ Z() const { return ObjectZ::Furniture; }
-
-	virtual bool Visible() const { return true; }
-	virtual bool BlocksMovement() const { return false; }
-	virtual bool ShowInFog() const { return true; }
-
-	virtual bool PlayerBumped(Direction from) { return false; }
-	virtual bool PlayerEnteredTile() { return false; }
-	virtual bool PlayerLeavingTile() { return false; }
-	
-	virtual void StartHeroTurn() { }
-
-	/// Returns whether it wants to take actions
-	virtual bool StartEvilTurn() { return false; }
-
-	/// Returns whether it is done this turn
-	virtual bool UpdateEvilTurn() { return true; }
-
-	virtual bool UpdateHeroTurn() { return true; }
-
-	virtual bool VisibleToPlayer() const;
-
-protected:
-
-	Map* mParentMap = nullptr;
-	ivec2 mPosition{};
-	ivec2 mLastPosition{};
-	seconds_t mMoveDelta = 1.0;
-
-};
-
-struct Furniture : TileObject
-{
-	using TileObject::TileObject;
-	bool Searched = false;
-	virtual bool BlocksMovement() const override { return true; }
-	virtual std::string Name() const override { return "Furniture"; }
-	virtual std::string Image() const override { return "obj/furniture/rubble"; }
-};
-
-struct CreatureClass
-{
-	std::string Name;
-	std::string Image;
-	int Health = 1;
-	int Attack = 2;
-	int Defense = 5;
-	int Speed = 3;
-};
-
-struct Creature : TileObject
-{
-	Creature(Map* pm, ivec2 at, CreatureClass const& klass) : TileObject(pm, at), Class(&klass), AP(klass.Speed) {}
-
-	CreatureClass const* Class = nullptr;
-	int AP = 0;
-
-	virtual bool BlocksMovement() const override { return true; }
-	virtual bool ShowInFog() const override { return false; }
-
-	virtual std::string Name() const override { return Class->Name; }
-	virtual std::string Image() const override { return Class->Image; }
-
-	bool SpendAP(int ap_cost = 1);
-};
-
-struct MonsterClass : CreatureClass
-{
-	std::string AI;
-	int Damage = 1;
-	int XP = 1;
-	std::vector<std::string> Traits;
-	std::map<std::string, std::string> Abilities;
-	//std::vector<std::string> Barks;
-	std::string Barks;
-
-	template<class Archive>
-	void Archive(Archive& ar)
-	{
-		ar& ARCHIVE_NVP(Name);
-		ar& ARCHIVE_NVP(Image);
-		ar& ARCHIVE_NVP(AI);
-		ar& ARCHIVE_NVP(Health);
-		ar& ARCHIVE_NVP(Attack);
-		ar& ARCHIVE_NVP(Defense);
-		ar& ARCHIVE_NVP(Damage);
-		ar& ARCHIVE_NVP(Speed);
-		ar& ARCHIVE_NVP(XP);
-		ar& ARCHIVE_NVP(Abilities);
-		ar& ARCHIVE_NVP(Traits);
-		ar& ARCHIVE_NVP(Barks);
-	}
-};
-
-struct Monster : Creature
-{
-	using Creature::Creature;
-
-	virtual bool StartEvilTurn() override;
-
-	virtual ObjectZ Z() const override { return ObjectZ::Monsters; }
-
-	bool CanSeePlayer() const;
-	bool CanAttackPlayer() const;
-	void AttackPlayer();
-	bool CanMoveTowardPlayer();
-	void MoveTowardPlayer();
-	void Wander();
-
-	bool HasPathToPlayer();
-	bool CalculatePathToPlayer();
-	bool MoveOnPath();
-
-	ivec2 LastPlayerPosition() const { return mLastPlayerPosition; }
-
-	virtual bool UpdateEvilTurn() override;
-
-	rsl::ValueRef mScriptObject;
-
-	Direction DirToPlayer() const;
-
-	void AITurn();
-
-	virtual bool UpdateHeroTurn() override;
-
-protected:
-
-	ivec2 mLastPlayerPosition = { -1, -1 };
-	std::vector<ivec2> mPathToPlayer;
-};
-
-struct HeroClass : CreatureClass
-{
-	int MagicPower;
-	int Strength;
-	std::vector<std::string> StartingEquipment;
-	std::vector<std::string> StartingSkills;
-	std::string Motto;
-
-	template<class Archive>
-	void Archive(Archive& ar)
-	{
-		ar& ARCHIVE_NVP(Name);
-		ar& ARCHIVE_NVP(Health);
-		ar& ARCHIVE_NVP(Attack);
-		ar& ARCHIVE_NVP(Defense);
-		ar& ARCHIVE_NVP(Speed);
-		ar& ARCHIVE_NVP(MagicPower);
-		ar& ARCHIVE_NVP(Strength);
-		ar& ARCHIVE_NVP(Image);
-		ar& ARCHIVE_NVP(StartingEquipment);
-		ar& ARCHIVE_NVP(StartingSkills);
-		ar& ARCHIVE_NVP(Motto);
-	}
-};
-
-struct Hero : Creature
-{
-	using Creature::Creature;
-
-	virtual void StartHeroTurn() override
-	{
-		AP = Class->Speed;
-	}
-
-	virtual ObjectZ Z() const override { return ObjectZ::Heroes; }
-};
-
-struct Door : TileObject
-{
-	using TileObject::TileObject;
-	uint32_t Locked = 0;
-	bool Open = false;
-	virtual std::string Name() const override { return "Door"; }
-	virtual std::string Image() const override { return "obj/doors/stone_closed"; }
-	virtual std::string OpenImage() const { return "obj/doors/stone_open"; }
-	virtual ObjectZ Z() const override { return ObjectZ::Walls; }
-
-	virtual bool PlayerBumped(Direction from) override;
-};
-
-struct Stairs : TileObject
-{
-	Stairs(Map* pm, ivec2 at) : TileObject(pm, at) { Size = { 2,2 }; }
-	virtual std::string Image() const override { return "obj/floorobjs/stairway"; }
-	virtual std::string Name() const override { return "Stairs"; }
-	virtual ObjectZ Z() const override { return ObjectZ::Floor; }
-};
-
-struct Trap : TileObject
-{
-	using TileObject::TileObject;
-	bool Sprung = false;
-	virtual std::string Name() const override { return "Trap"; }
-	virtual std::string Image() const override { return "obj/traps/pit"; }
-	virtual ObjectZ Z() const override { return ObjectZ::Floor; }
-};
-
-struct ItemClass
-{
-	std::string Name;
-	int Cost;
-	std::string Image;
-	std::vector<int> Requirements;
-	std::vector<std::string> Powers;
-	std::vector<std::string> Traits;
-	std::string Fluff;
-};
-
-struct WeaponClass : ItemClass
-{
-	//WeaponType Type;
-	//AmmoType Ammo;
-	//int AmmoStart;
-	int Damage;
-	//DamageType DamageType;
-	int Range = 1;
-	bool Diagonal = false;
-};
-
-struct Item : TileObject
-{
-	using TileObject::TileObject;
-	
-	ItemClass const* Class = nullptr;
-
-	virtual std::string Name() const override { return "Item"; }
-	virtual std::string Image() const override { return "obj/treasure"; }
-	virtual ObjectZ Z() const override { return ObjectZ::Items; }
-	virtual bool ShowInFog() const override { return false; }
-};
-
-struct Trigger : TileObject
-{
-	using TileObject::TileObject;
-
-	virtual bool Visible() const { return false; }
-	virtual std::string Name() const override { return "Trigger"; }
-	virtual ObjectZ Z() const override { return ObjectZ::Floor; }
-};
-
-struct RoomTile
-{
-	ALLEGRO_BITMAP* Bg = nullptr;
-	int RotationFlags = 0;
-
-	std::set<TileObject*> Objects;
-};
-
-constexpr float tile_width = 128;
-constexpr float _half_tile_width = tile_width / 2;
-constexpr vec2 tile_size = { tile_width, tile_width };
-constexpr vec2 half_tile_size = tile_size / 2.0f;
-constexpr auto wall_width = 10;
-constexpr auto shadow_size = 20;
-
-struct Map
-{
-	Map(Game* parent);
-
-	Game* ParentGame = nullptr;
-
-	Grid<RoomTile> RoomGrid;
-	WallNavigationGrid NavGrid;
-	std::vector<std::unique_ptr<TileObject>> Objects;
-
-	Grid<RoomTile>* operator->() { return &RoomGrid; }
-	Grid<RoomTile> const* operator->() const { return &RoomGrid; }
-
-	template <typename T, typename... ARGS>
-	T* SpawnObject(ivec2 pos, ARGS&&... args)
-	{
-		if (!RoomGrid.IsValid(pos)) return nullptr;
-
-		auto obj = std::make_unique<T>(this, pos, std::forward<ARGS>(args)...);
-		auto ptr = (TileObject*)obj.get();
-		for (int x = 0; x < ptr->Size.x; x++)
-			for (int y = 0; y < ptr->Size.y; y++)
-				RoomGrid.At(pos + ivec2{x, y})->Objects.insert(ptr);
-		Objects.push_back(std::move(obj));
-		return (T*)ptr;
-	}
-
-	void BuildRoom(irec2 const& room, ivec2 door_pos, Direction door_dir);
-
-	void DetermineVisibility(vec2 from_position);
-
-	bool CanCreatureMove(ivec2 pos, Direction dir) const;
-	bool CanCreatureMove(ivec2 pos, ivec2 new_pos) const;
-};
-
-struct Game : rsl::OSInterface
+struct Game
 {
 	void Init();
 
@@ -418,8 +81,6 @@ struct Game : rsl::OSInterface
 
 	void EndMove();
 
-	void CameraFollow(TileObject* creature, bool wait = false);
-	
 	template <typename... ARGS>
 	void DrawText(ALLEGRO_FONT* font, vec2 position, Color const& color, Color const& background_color, Align align, std::string_view format, ARGS&&... args)
 	{
@@ -447,75 +108,7 @@ struct Game : rsl::OSInterface
 
 	void Shutdown();
 
-	Monster* SpawnMonster(std::string_view monster_class);
-
-	Hero* Player() const { return mPlayer; }
-
-	void OpenDoor(Door* door);
-
-	template <typename... ARGS>
-	bool SuspendableCall(rsl::ValueRef const& self, std::string_view method_name, ARGS&&... args)
-	{
-		auto result = mScriptContext.Call(self, method_name, std::forward<ARGS>(args)...);
-		if (mScriptContext.Suspended())
-		{
-			/// TODO: Setup the suspension state and anims and stuff
-			fmt::print("script suspended: {}\n", result->ToString());
-			return false;
-		}
-		return true;
-	}
-
-	template <typename... ARGS>
-	rsl::ValueRef Call(rsl::ValueRef const& self, std::string_view method_name, ARGS&&... args)
-	{
-		return mScriptContext.Call(self, method_name, std::forward<ARGS>(args)...);
-	}
-
-	template <typename T, typename... ARGS>
-	T Call(rsl::ValueRef const& self, std::string_view method_name, ARGS&&... args)
-	{
-		T result;
-		mScriptContext.FromValue(result, mScriptContext.Call(self, method_name, std::forward<ARGS>(args)...).Value());
-		return result;
-	}
-
 private:
-
-	//bool CanMoveIn(Direction move_dir);
-	//bool CanMoveTo(ivec2 pos);
-	//void MovePlayer(Direction move_dir);
-	void DirectionAction(Direction dir);
-	
-	struct Command
-	{
-		std::string Text;
-		InputID Input = InvalidInput;
-		std::function<void()> Func;
-	};
-
-	std::vector<Command> mCommands;
-
-	void AddCommand(InputID input, std::string_view text, std::function<void()> func);
-
-	void SpendAP();
-
-	/// `filter_out` returns TRUE if we should skip drawing this object
-	void DrawObjects(std::function<bool(TileObject*)> filter_out);
-
-	template <typename FUNC>
-	void ForEachVisibleTile(FUNC&& func)
-	{
-		for (int y = 0; y < mCurrentMap.RoomGrid.Height(); y++)
-		{
-			for (int x = 0; x < mCurrentMap.RoomGrid.Width(); x++)
-			{
-				auto pos = ivec2{ x, y };
-				auto tile = mCurrentMap.RoomGrid.At(pos);
-				func(pos, tile, vec2(pos) * tile_width);
-			}
-		}
-	}
 
 	ALLEGRO_DISPLAY* mDisplay = nullptr;
 	ALLEGRO_EVENT_QUEUE* mQueue = nullptr;
@@ -534,9 +127,6 @@ private:
 	PanZoomer mPanZoomer{ mInput, mCamera };
 	AllegroImGuiDebugger mDebugger;
 
-	rsl::Module mScriptModule{ *this };
-	rsl::ExecutionContext mScriptContext{ mScriptModule };
-
 	bool mQuit = false;
 	double mDT = 0;
 
@@ -546,77 +136,9 @@ private:
 
 	Page mTileDescription;
 
-	Map mCurrentMap{ this };
-	Hero* mPlayer = nullptr;
-
-	std::map<std::string, HeroClass, std::less<>> mHeroClasses;
-	std::map<std::string, MonsterClass, std::less<>> mMonsterClasses;
-	std::map<std::string, ItemClass, std::less<>> mItemClasses;
-	std::map<std::string, WeaponClass, std::less<>> mWeaponClasses;
-
-	template <typename T>
-	void LoadClasses(path from_file, std::map<std::string, T, std::less<>>& map, std::function<void(T&)> callback = {})
-	{
-		std::ifstream file{ from_file };
-		if (file.peek() == 0xEF) /// FUCK UTF8 BOMS
-			file.ignore(3);
-
-		try
-		{
-			json csv = LoadCSV(file);
-			for (auto& row : csv)
-			{
-				archive::JsonArchiver archiver{ mReporter, row };
-				auto& klass = map[(std::string)archiver.CurrentObject->at("Name")];
-				klass.Archive(archiver);
-				if (callback)
-					callback(klass);
-			}
-		}
-		catch (Reporter& e)
-		{
-			e.AdditionalInfo("InFile", from_file.string());
-			e.Perform();
-		}
-	}
-
 	std::map<std::string, ALLEGRO_BITMAP*, std::less<>> mImages;
 
 	ALLEGRO_BITMAP* GetImage(std::string_view name) const;
 
-	enum class ModeAction
-	{
-		Enter,
-		Return,
-		Update,
-		UIDraw,
-		Suspend,
-		Leave,
-	};
-
-	void ModePlayerMovement(ModeAction action);
-	void ModeEndTurn(ModeAction action);
-	void ModeEvilTurn(ModeAction action);
-	void ModeStartTurn(ModeAction action);
-
-	void ModeWait(ModeAction action);
-
 	std::vector<std::function<bool(seconds_t)>> mAnimators;
-
-	typedef void(Game::*GameMode)(ModeAction);
-
-	std::vector<GameMode> mModeStack;
-	GameMode mCurrentMode = &Game::ModePlayerMovement;
-	std::vector<TileObject*> mEvilObjects;
-	TileObject* mCurrentEvil = nullptr;
-
-	bool NextEvil();
-
-	void DoModeAction(ModeAction action);
-
-	void SwitchMode(GameMode mode);
-	void PushMode(GameMode mode);
-	void PopMode();
-
-	virtual void ReportSingle(rsl::ReportType type, rsl::ReportModule in_module, rsl::SourcePos const& pos, std::string_view message) override;
 };

@@ -4,6 +4,7 @@
 #include "../Includes/EnumFlags.h"
 #include "../Colors.h"
 #include "Grid.h"
+#include <array>
 
 namespace gamelib::squares
 {

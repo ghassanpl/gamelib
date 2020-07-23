@@ -43,6 +43,9 @@
     <Filter Include="Source Files\Scripting">
       <UniqueIdentifier>{5ddd92ae-669a-4a6f-a877-09f36da6633b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Support">
+      <UniqueIdentifier>{5a286a10-cc87-4445-a998-b21008b8bf57}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\Includes\Allegro.h">
@@ -94,12 +97,6 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="include\Common.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\Debugger.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\ErrorReporter.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="include\Transformable.h">
@@ -177,6 +174,15 @@
     <ClInclude Include="include\Serialization\StringBuffers.h">
       <Filter>Source Files\Input\Serialization</Filter>
     </ClInclude>
+    <ClInclude Include="include\ErrorReporter.h">
+      <Filter>Source Files\Support</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Debugger.h">
+      <Filter>Source Files\Support</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Support\IOC.h">
+      <Filter>Source Files\Support</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="include\Camera.cpp">
@@ -194,9 +200,6 @@
     <ClCompile Include="include\Input\InputSystem.cpp">
       <Filter>Source Files\Input</Filter>
     </ClCompile>
-    <ClCompile Include="src\ErrorReporter.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="include\Navigation\Navigation.cpp">
       <Filter>Source Files\Navigation</Filter>
     </ClCompile>
@@ -209,11 +212,14 @@
     <ClCompile Include="src\AllegroImGuiDebugger.cpp">
       <Filter>Source Files\Debug</Filter>
     </ClCompile>
-    <ClCompile Include="src\Debug\Debugger.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="include\Text\TextField.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ErrorReporter.cpp">
+      <Filter>Source Files\Support</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Debug\Debugger.cpp">
+      <Filter>Source Files\Support</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
