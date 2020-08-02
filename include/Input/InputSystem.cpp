@@ -3,6 +3,13 @@
 
 namespace gamelib
 {
+	IInputSystem::IInputSystem(std::shared_ptr<IErrorReporter> error_reporter, std::shared_ptr<IDebugger> debugger) noexcept
+		: ErrorReporter{ std::move(error_reporter) }
+		, Debugger{ std::move(debugger) }
+	{
+
+	}
+
 	void IInputSystem::SetLastActiveDevice(IInputDevice* device, seconds_t current_time)
 	{
 		if (device)
@@ -37,9 +44,9 @@ namespace gamelib
 			{
 				for (auto& mapping : it->second)
 				{
-					if (auto device = GetInputDevice(mapping.DeviceID))
+					if (auto device = InputDevice(mapping.DeviceID))
 					{
-						if (device->GetInputStateDigital(mapping.Inputs[0]))
+						if (device->IsInputPressed(mapping.Inputs[0]))
 							return true;
 					}
 				}
@@ -50,7 +57,7 @@ namespace gamelib
 
 	bool IInputSystem::IsButtonPressed(MouseButton but)
 	{
-		return GetMouse()->GetInputStateDigital((DeviceInputID)but);
+		return Mouse()->IsInputPressed((DeviceInputID)but);
 	}
 
 	bool IInputSystem::WasButtonPressed(Input input_id)
@@ -61,9 +68,9 @@ namespace gamelib
 			{
 				for (auto& mapping : it->second)
 				{
-					if (auto device = GetInputDevice(mapping.DeviceID))
+					if (auto device = InputDevice(mapping.DeviceID))
 					{
-						if (device->GetInputStateDigital(mapping.Inputs[0]) && !device->GetInputStateLastFrameDigital(mapping.Inputs[0]))
+						if (device->IsInputPressed(mapping.Inputs[0]) && !device->WasInputPressedLastFrame(mapping.Inputs[0]))
 							return true;
 					}
 				}
@@ -74,15 +81,15 @@ namespace gamelib
 
 	bool IInputSystem::WasButtonPressed(MouseButton but)
 	{
-		return GetMouse()->GetInputStateDigital((DeviceInputID)but) && !GetMouse()->GetInputStateLastFrameDigital((DeviceInputID)but);
+		return Mouse()->IsInputPressed((DeviceInputID)but) && !Mouse()->WasInputPressedLastFrame((DeviceInputID)but);
 	}
 
-	float IInputSystem::GetAxis(Input of_input)
+	float IInputSystem::AxisValue(Input of_input)
 	{
 		auto player = GetPlayer(of_input.Player);
 		if (!player)
 		{
-			ErrorReporter.NewWarning("Player not found for input")
+			ErrorReporter->NewWarning("Player not found for input")
 				.Value("PlayerID", of_input.Player)
 				.Value("ActionID", of_input.ActionID)
 				.Perform();
@@ -93,21 +100,21 @@ namespace gamelib
 		{
 			for (auto& mapping : it->second)
 			{
-				if (auto device = GetInputDevice(mapping.DeviceID))
+				if (auto device = InputDevice(mapping.DeviceID))
 				{
-					return (float)device->GetInputState(mapping.Inputs[0]);
+					return (float)device->InputValue(mapping.Inputs[0]);
 				}
 			}
 		}
 		return 0.0f;
 	}
 
-	vec2 IInputSystem::GetAxis2D(Input of_input)
+	vec2 IInputSystem::Axis2DValue(Input of_input)
 	{
 		auto player = GetPlayer(of_input.Player);
 		if (!player)
 		{
-			ErrorReporter.NewWarning("Player not found for input")
+			ErrorReporter->NewWarning("Player not found for input")
 				.Value("PlayerID", of_input.Player)
 				.Value("ActionID", of_input.ActionID)
 				.Perform();
@@ -118,31 +125,31 @@ namespace gamelib
 		{
 			for (auto& mapping : it->second)
 			{
-				if (auto device = GetInputDevice(mapping.DeviceID))
+				if (auto device = InputDevice(mapping.DeviceID))
 				{
-					return { (float)device->GetInputState(mapping.Inputs[0]), (float)device->GetInputState(mapping.Inputs[1]) };
+					return { (float)device->InputValue(mapping.Inputs[0]), (float)device->InputValue(mapping.Inputs[1]) };
 				}
 			}
 		}
 		return {};
 	}
 
-	vec2 IInputSystem::GetMousePosition() const
+	vec2 IInputSystem::MousePosition() const
 	{
-		return { (float)GetMouse()->GetInputState(GetMouse()->GetXAxisInput()), (float)GetMouse()->GetInputState(GetMouse()->GetYAxisInput()) };
+		return { (float)Mouse()->InputValue(Mouse()->XAxisInputID()), (float)Mouse()->InputValue(Mouse()->YAxisInputID()) };
 	}
 
-	IInputDevice* IInputSystem::GetInputDevice(InputDeviceIndex id)
+	IInputDevice* IInputSystem::InputDevice(InputDeviceIndex id)
 	{
 		if (id < mInputDevices.size())
 			return mInputDevices[id].get();
 		return nullptr;
 	}
 
-	std::string IInputSystem::GetInputDeviceName(InputDeviceIndex id)
+	std::string IInputSystem::InputDeviceName(InputDeviceIndex id)
 	{
-		if (auto dev = GetInputDevice(id))
-			return (std::string)dev->GetName();
+		if (auto dev = InputDevice(id))
+			return (std::string)dev->Name();
 		else
 			return fmt::format("Disconnected Device {}", id); /// TODO: Cache device names so we can add ("(Previously {})", OldDeviceName)
 	}
@@ -155,14 +162,14 @@ namespace gamelib
 		return &player_it->second;
 	}
 
-	std::string IInputSystem::GetButtonNamesForInput(Input button, std::string_view button_format)
+	std::string IInputSystem::ButtonNamesForInput(Input button, std::string_view button_format)
 	{
 		std::string buttons;
 		for (auto& mapping : GetPlayer(button.Player)->Mappings[button.ActionID])
 		{
-			if (auto device = GetInputDevice(mapping.DeviceID))
+			if (auto device = InputDevice(mapping.DeviceID))
 			{
-				auto props = device->GetInputProperties(mapping.Inputs[0]);
+				auto props = device->PropertiesOf(mapping.Inputs[0]);
 				if (!buttons.empty()) buttons += ", ";
 				buttons += fmt::format(button_format, props.Name);
 			}
@@ -175,7 +182,7 @@ namespace gamelib
 		return buttons;
 	}
 
-	std::string IInputSystem::GetButtonNameForInput(Input input, std::string_view button_format)
+	std::string IInputSystem::ButtonNameForInput(Input input, std::string_view button_format)
 	{
 		/// Find the correct mapping from the device that was updated the latest
 
@@ -184,38 +191,26 @@ namespace gamelib
 		seconds_t last_active = {};
 		for (auto& mapping : GetPlayer(input.Player)->Mappings[input.ActionID])
 		{
-			if (auto device = GetInputDevice(mapping.DeviceID); device && device->GetLastActiveTime() >= last_active)
+			if (auto device = InputDevice(mapping.DeviceID); device && device->LastActiveTime() >= last_active)
 			{
 				last_mapping = &mapping;
 				last_device = device;
-				last_active = device->GetLastActiveTime();
+				last_active = device->LastActiveTime();
 			}
 		}
 
 		if (last_mapping)
 		{
-			auto props = last_device->GetInputProperties(last_mapping->Inputs[0]);
+			auto props = last_device->PropertiesOf(last_mapping->Inputs[0]);
 			return fmt::format(button_format, props.Name);
 		}
 
 		return "";
 	}
 
-	void IInputSystem::Debug(IDebugger& debugger)
+	void IInputSystem::Debug()
 	{
-		debugger.Text("Last Active Device: {}", mLastActiveDevice ? mLastActiveDevice->GetName() : "none");
-		/*
-		IKeyboardDevice* mKeyboard = nullptr;
-		IMouseDevice* mMouse = nullptr;
-		IGamepadDevice* mFirstGamepad = nullptr;
-
-		IInputDevice* mLastActiveDevice = nullptr;
-
-		std::vector<std::unique_ptr<IInputDevice>> mInputDevices;
-		std::map<void*, IGamepadDevice*> mJoystickMap;
-
-		std::map<PlayerID, PlayerInformation> mPlayers;
-		*/
+		Debugger->Text("Last Active Device: {}", mLastActiveDevice ? mLastActiveDevice->Name() : "none");
 	}
 
 #if 0

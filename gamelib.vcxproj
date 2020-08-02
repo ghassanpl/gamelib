@@ -185,7 +185,8 @@
     <ClInclude Include="include\Navigation\Navigation.impl.h" />
     <ClInclude Include="include\Navigation\Squares.h" />
     <ClInclude Include="include\Random.h" />
-    <ClInclude Include="include\Resources\Resource.h" />
+    <ClInclude Include="include\Resources\Files.h" />
+    <ClInclude Include="include\Resources\Files.impl.h" />
     <ClInclude Include="include\Serialization\CSV.h" />
     <ClInclude Include="include\Serialization\IArchiver.h" />
     <ClInclude Include="include\Serialization\IOStreamBuffers.h" />

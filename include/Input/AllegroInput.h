@@ -24,16 +24,16 @@ namespace gamelib
 	{
 		using IKeyboardDevice::IKeyboardDevice;
 
-		virtual DeviceInputID GetMaxInput() const override;
-		virtual double GetInputState(DeviceInputID input) const override;
-		virtual bool GetInputStateDigital(DeviceInputID input) const override;
-		virtual double GetInputStateLastFrame(DeviceInputID input) const override;
-		virtual bool GetInputStateLastFrameDigital(DeviceInputID input) const override;
-		virtual InputProperties GetInputProperties(DeviceInputID input) const override;
+		virtual DeviceInputID MaxInputID() const override;
+		virtual double InputValue(DeviceInputID input) const override;
+		virtual bool IsInputPressed(DeviceInputID input) const override;
+		virtual double InputValueLastFrame(DeviceInputID input) const override;
+		virtual bool WasInputPressedLastFrame(DeviceInputID input) const override;
+		virtual InputProperties PropertiesOf(DeviceInputID input) const override;
 		virtual void ForceRefresh() override;
 		virtual void NewFrame() override;
-		virtual std::string_view GetStringProperty(StringProperty property) const override;
-		virtual glm::vec3 GetNumberProperty(NumberProperty property) const override;
+		virtual std::string_view StringPropertyValue(StringProperty property) const override;
+		virtual glm::vec3 NumberPropertyValue(NumberProperty property) const override;
 
 		// Inherited via IKeyboardDevice
 		virtual void KeyPressed(DeviceInputID key);
@@ -50,7 +50,7 @@ namespace gamelib
 		std::array<KeyState, (size_t)KeyboardKey::Max> LastFrameState;
 
 		// Inherited via IKeyboardDevice
-		virtual enum_flags<InputDeviceFlags> GetFlags() const override;
+		virtual enum_flags<InputDeviceFlags> Flags() const override;
 		virtual bool IsStringPropertyValid(StringProperty property) const override;
 		virtual bool IsNumberPropertyValid(NumberProperty property) const override;
 	};
@@ -59,28 +59,28 @@ namespace gamelib
 	{
 		using IMouseDevice::IMouseDevice;
 
-		virtual DeviceInputID GetMaxInput() const override;
-		virtual double GetInputState(DeviceInputID input) const override;
-		virtual bool GetInputStateDigital(DeviceInputID input) const override;
-		virtual double GetInputStateLastFrame(DeviceInputID input) const override;
-		virtual bool GetInputStateLastFrameDigital(DeviceInputID input) const override;
-		virtual InputProperties GetInputProperties(DeviceInputID input) const override;
+		virtual DeviceInputID MaxInputID() const override;
+		virtual double InputValue(DeviceInputID input) const override;
+		virtual bool IsInputPressed(DeviceInputID input) const override;
+		virtual double InputValueLastFrame(DeviceInputID input) const override;
+		virtual bool WasInputPressedLastFrame(DeviceInputID input) const override;
+		virtual InputProperties PropertiesOf(DeviceInputID input) const override;
 		virtual void ForceRefresh() override;
 		virtual void NewFrame() override;
 		virtual bool IsConnected() const override;
-		virtual enum_flags<InputDeviceFlags> GetFlags() const override;
+		virtual enum_flags<InputDeviceFlags> Flags() const override;
 		virtual bool IsStringPropertyValid(StringProperty property) const override;
-		virtual std::string_view GetStringProperty(StringProperty property) const override;
+		virtual std::string_view StringPropertyValue(StringProperty property) const override;
 		virtual bool IsNumberPropertyValid(NumberProperty property) const override;
-		virtual glm::vec3 GetNumberProperty(NumberProperty property) const override;
+		virtual glm::vec3 NumberPropertyValue(NumberProperty property) const override;
 
 		// Inherited via IMouseDevice
 
-		virtual DeviceInputID GetVerticalWheelInput() const override { return Wheel0; }
-		virtual DeviceInputID GetHorizontalWheelInput() const override { return Wheel1; }
+		virtual DeviceInputID VerticalWheelInputID() const override { return Wheel0; }
+		virtual DeviceInputID HorizontalWheelInputID() const override { return Wheel1; }
 
-		virtual DeviceInputID GetXAxisInput() const override { return XAxis; }
-		virtual DeviceInputID GetYAxisInput() const override { return YAxis; }
+		virtual DeviceInputID XAxisInputID() const override { return XAxis; }
+		virtual DeviceInputID YAxisInputID() const override { return YAxis; }
 
 		virtual void ShowCursor(bool show) override;
 		virtual bool IsCursorVisible() const override;
@@ -120,33 +120,33 @@ namespace gamelib
 	{
 		AllegroGamepad(IInputSystem& sys, ALLEGRO_JOYSTICK* stick);
 
-		virtual DeviceInputID GetMaxInput() const override;
-		virtual double GetInputState(DeviceInputID input) const override;
-		virtual bool GetInputStateDigital(DeviceInputID input) const override;
-		virtual double GetInputStateLastFrame(DeviceInputID input) const override;
-		virtual bool GetInputStateLastFrameDigital(DeviceInputID input) const override;
-		virtual InputProperties GetInputProperties(DeviceInputID input) const override;
+		virtual DeviceInputID MaxInputID() const override;
+		virtual double InputValue(DeviceInputID input) const override;
+		virtual bool IsInputPressed(DeviceInputID input) const override;
+		virtual double InputValueLastFrame(DeviceInputID input) const override;
+		virtual bool WasInputPressedLastFrame(DeviceInputID input) const override;
+		virtual InputProperties PropertiesOf(DeviceInputID input) const override;
 		virtual void ForceRefresh() override;
 		virtual void NewFrame() override;
 		virtual bool IsConnected() const override;
-		virtual enum_flags<InputDeviceFlags> GetFlags() const override;
+		virtual enum_flags<InputDeviceFlags> Flags() const override;
 		virtual bool IsStringPropertyValid(StringProperty property) const override;
-		virtual std::string_view GetStringProperty(StringProperty property) const override;
+		virtual std::string_view StringPropertyValue(StringProperty property) const override;
 		virtual bool IsNumberPropertyValid(NumberProperty property) const override;
-		virtual glm::vec3 GetNumberProperty(NumberProperty property) const override;
+		virtual glm::vec3 NumberPropertyValue(NumberProperty property) const override;
 
 		// Inherited via IGamepadDevice
-		virtual uint8_t GetStickCount() const override;
-		virtual uint8_t GetStickAxisCount(uint8_t stick_num) const override;
-		virtual uint8_t GetButtonCount() const override;
+		virtual uint8_t StickCount() const override;
+		virtual uint8_t StickAxisCount(uint8_t stick_num) const override;
+		virtual uint8_t ButtonCount() const override;
 
-		virtual bool GetButtonState(uint8_t button_num) const override;
-		virtual glm::vec3 GetStickState(uint8_t stick_num) const override;
-		virtual float GetStickAxisState(uint8_t stick_num, uint8_t axis_num) const override;
+		virtual bool IsButtonPressed(uint8_t button_num) const override;
+		virtual glm::vec3 StickValue(uint8_t stick_num) const override;
+		virtual float StickAxisValue(uint8_t stick_num, uint8_t axis_num) const override;
 
-		virtual bool GetButtonStateLastFrame(uint8_t button_num) const override;
-		virtual glm::vec3 GetStickStateLastFrame(uint8_t stick_num) const override;
-		virtual float GetStickAxisStateLastFrame(uint8_t stick_num, uint8_t axis_num) const override;
+		virtual bool WasButtonPressedLastFrame(uint8_t button_num) const override;
+		virtual glm::vec3 StickValueLastFrame(uint8_t stick_num) const override;
+		virtual float StickAxisValueLastFrame(uint8_t stick_num, uint8_t axis_num) const override;
 
 		struct JoystickState
 		{

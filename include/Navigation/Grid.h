@@ -77,8 +77,8 @@ namespace gamelib::squares
 
 		TILE_DATA const& SafeAt(ivec2 pos, TILE_DATA const& outside) const noexcept { if (auto at = At(pos)) return at->Data; return outside; }
 		TILE_DATA const& SafeAt(int x, int y, TILE_DATA const& outside) const noexcept { return At(ivec2{ x, y }, outside); }
-		TILE_DATA& SafeAt(ivec2 pos, TILE_DATA const& outside) noexcept { if (auto at = At(pos)) return at->Data; return outside; }
-		TILE_DATA& SafeAt(int x, int y, TILE_DATA const& outside) noexcept { return At(ivec2{ x, y }); }
+		TILE_DATA& SafeAt(ivec2 pos, TILE_DATA& outside) noexcept { if (auto at = At(pos)) return at->Data; return outside; }
+		TILE_DATA& SafeAt(int x, int y, TILE_DATA& outside) noexcept { return At(ivec2{ x, y }); }
 
 		int Width() const noexcept { return mWidth; }
 		int Height() const noexcept { return mHeight; }

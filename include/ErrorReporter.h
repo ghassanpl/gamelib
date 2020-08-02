@@ -34,6 +34,7 @@ namespace gamelib
 			MessageLines.push_back(fmt::format(fmt, std::forward<ARGS>(args)...));
 			return *this;
 		}
+
 		template <typename... ARGS>
 		Reporter& AdditionalInfo(std::string_view name, std::string_view fmt, ARGS&&... args)
 		{

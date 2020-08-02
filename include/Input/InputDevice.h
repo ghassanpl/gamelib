@@ -158,34 +158,34 @@ namespace gamelib
 		IInputSystem& ParentSystem;
 		IInputDevice(IInputSystem& sys) : ParentSystem(sys) {}
 
-		seconds_t GetLastActiveTime() const { return mLastActiveTime; }
+		seconds_t LastActiveTime() const { return mLastActiveTime; }
 		void SetLastActiveTime(seconds_t time) { mLastActiveTime = time; }
 
-		virtual std::string_view GetName() const;
-		virtual enum_flags<InputDeviceFlags> GetFlags() const = 0;
+		virtual std::string_view Name() const;
+		virtual enum_flags<InputDeviceFlags> Flags() const = 0;
 
-		virtual DeviceInputID GetMaxInput() const = 0;
-		virtual bool IsValidInput(DeviceInputID input) const { return input < GetMaxInput(); }
-		virtual double GetInputState(DeviceInputID input) const = 0;
-		virtual bool GetInputStateDigital(DeviceInputID input) const = 0;
-		virtual double GetInputStateLastFrame(DeviceInputID input) const = 0;
-		virtual bool GetInputStateLastFrameDigital(DeviceInputID input) const = 0;
+		virtual DeviceInputID MaxInputID() const = 0;
+		virtual bool IsInputValid(DeviceInputID input) const { return input < MaxInputID(); }
+		virtual double InputValue(DeviceInputID input) const = 0;
+		virtual bool IsInputPressed(DeviceInputID input) const = 0;
+		virtual double InputValueLastFrame(DeviceInputID input) const = 0;
+		virtual bool WasInputPressedLastFrame(DeviceInputID input) const = 0;
 		virtual bool SetInputUpdateFrequency(herz_t freq) { return false; }
 
-		virtual InputProperties GetInputProperties(DeviceInputID input) const = 0;
+		virtual InputProperties PropertiesOf(DeviceInputID input) const = 0;
 
-		virtual bool IsValidNavigation(UINavigationInput input) const = 0;
-		virtual bool GetNavigation(UINavigationInput input) const = 0;
-		virtual bool GetNavigationLastFrame(UINavigationInput input) const = 0;
+		virtual bool IsNavigationValid(UINavigationInput input) const = 0;
+		virtual bool IsNavigationPressed(UINavigationInput input) const = 0;
+		virtual bool WasNavigationPressedLastFrame(UINavigationInput input) const = 0;
 
 		virtual bool IsConnected() const { return true; }
 
-		virtual size_t GetSubDeviceCount() const { return 0; }
-		virtual IInputDevice* GetSubDevice(size_t index) const { return nullptr; }
+		virtual size_t SubDeviceCount() const { return 0; }
+		virtual IInputDevice* SubDevice(size_t index) const { return nullptr; }
 
-		virtual DeviceOutputID GetMaxOutput() const { return {}; }
-		virtual bool IsValidOutput(DeviceOutputID input) const { return input < GetMaxOutput(); }
-		virtual OutputProperties GetOutputProperties(DeviceOutputID input) const;
+		virtual DeviceOutputID MaxOutputID() const { return {}; }
+		virtual bool IsOutputValid(DeviceOutputID input) const { return input < MaxOutputID(); }
+		virtual OutputProperties OutputProperties(DeviceOutputID input) const;
 		virtual void SetOutput(DeviceOutputID index, glm::vec3 value) {}
 		virtual void ResetOutput(DeviceOutputID index) {}
 		virtual void SendOutputData(DeviceOutputID index, std::span<const uint8_t> data) {}
@@ -197,7 +197,7 @@ namespace gamelib
 		// virtual InputDataProperties const& DataProperties(size_t index) const = 0;
 		// virtual std::vector<uint8_t> ReadData(size_t index, size_t max_data) = 0;
 
-		enum class PowerSource
+		enum class PowerSourceType
 		{
 			None,
 			Wire,
@@ -206,8 +206,9 @@ namespace gamelib
 			ExternalAccu,
 			Unknown
 		};
-		virtual PowerSource GetPowerSource() const { return IInputDevice::PowerSource::Unknown; }
-		virtual enum_flags<PowerSource> AvailablePowerSources() const { return enum_flags<PowerSource>{}; }
+
+		virtual PowerSourceType PowerSource() const { return IInputDevice::PowerSourceType::Unknown; }
+		virtual enum_flags<PowerSourceType> AvailablePowerSources() const { return enum_flags<PowerSourceType>{}; }
 
 		enum class StringProperty
 		{
@@ -219,7 +220,7 @@ namespace gamelib
 		};
 
 		virtual bool IsStringPropertyValid(StringProperty property) const = 0;
-		virtual std::string_view GetStringProperty(StringProperty property) const = 0;
+		virtual std::string_view StringPropertyValue(StringProperty property) const = 0;
 
 		enum class NumberProperty
 		{
@@ -232,7 +233,7 @@ namespace gamelib
 		};
 
 		virtual bool IsNumberPropertyValid(NumberProperty property) const = 0;
-		virtual glm::vec3 GetNumberProperty(NumberProperty property) const = 0;
+		virtual glm::vec3 NumberPropertyValue(NumberProperty property) const = 0;
 
 		virtual void ForceRefresh() = 0;
 		virtual void NewFrame() = 0;
@@ -258,9 +259,9 @@ namespace gamelib
 	{
 		using IInputDevice::IInputDevice;
 
-		virtual bool IsValidNavigation(UINavigationInput input) const override;
-		virtual bool GetNavigation(UINavigationInput input) const override;
-		virtual bool GetNavigationLastFrame(UINavigationInput input) const override;
+		virtual bool IsNavigationValid(UINavigationInput input) const override;
+		virtual bool IsNavigationPressed(UINavigationInput input) const override;
+		virtual bool WasNavigationPressedLastFrame(UINavigationInput input) const override;
 	};
 
 	enum class MouseCursorShape
@@ -295,11 +296,11 @@ namespace gamelib
 	{
 		using IInputDevice::IInputDevice;
 
-		virtual DeviceInputID GetVerticalWheelInput() const = 0;
-		virtual DeviceInputID GetHorizontalWheelInput() const = 0;
+		virtual DeviceInputID VerticalWheelInputID() const = 0;
+		virtual DeviceInputID HorizontalWheelInputID() const = 0;
 
-		virtual DeviceInputID GetXAxisInput() const = 0;
-		virtual DeviceInputID GetYAxisInput() const = 0;
+		virtual DeviceInputID XAxisInputID() const = 0;
+		virtual DeviceInputID YAxisInputID() const = 0;
 
 		virtual void ShowCursor(bool show) {}
 		virtual bool IsCursorVisible() const { return true; }
@@ -315,26 +316,26 @@ namespace gamelib
 		/// TODO: Locking/constraining/trapping
 		/// see al_grab_mouse
 
-		virtual bool IsValidNavigation(UINavigationInput input) const override;
-		virtual bool GetNavigation(UINavigationInput input) const override;
-		virtual bool GetNavigationLastFrame(UINavigationInput input) const override;
+		virtual bool IsNavigationValid(UINavigationInput input) const override;
+		virtual bool IsNavigationPressed(UINavigationInput input) const override;
+		virtual bool WasNavigationPressedLastFrame(UINavigationInput input) const override;
 	};
 
 	struct IGamepadDevice : virtual IInputDevice
 	{
 		using IInputDevice::IInputDevice;
 
-		virtual uint8_t GetStickCount() const = 0;
-		virtual uint8_t GetStickAxisCount(uint8_t stick_num) const = 0;
-		virtual uint8_t GetButtonCount() const = 0;
+		virtual uint8_t StickCount() const = 0;
+		virtual uint8_t StickAxisCount(uint8_t stick_num) const = 0;
+		virtual uint8_t ButtonCount() const = 0;
 
-		virtual bool GetButtonState(uint8_t button_num) const = 0;
-		virtual glm::vec3 GetStickState(uint8_t stick_num) const = 0;
-		virtual float GetStickAxisState(uint8_t stick_num, uint8_t axis_num) const = 0;
+		virtual bool IsButtonPressed(uint8_t button_num) const = 0;
+		virtual glm::vec3 StickValue(uint8_t stick_num) const = 0;
+		virtual float StickAxisValue(uint8_t stick_num, uint8_t axis_num) const = 0;
 
-		virtual bool GetButtonStateLastFrame(uint8_t button_num) const = 0;
-		virtual glm::vec3 GetStickStateLastFrame(uint8_t stick_num) const = 0;
-		virtual float GetStickAxisStateLastFrame(uint8_t stick_num, uint8_t axis_num) const = 0;
+		virtual bool WasButtonPressedLastFrame(uint8_t button_num) const = 0;
+		virtual glm::vec3 StickValueLastFrame(uint8_t stick_num) const = 0;
+		virtual float StickAxisValueLastFrame(uint8_t stick_num, uint8_t axis_num) const = 0;
 	};
 
 	enum class XboxGamepadButton
@@ -353,23 +354,23 @@ namespace gamelib
 	{
 		using IGamepadDevice::IGamepadDevice;
 
-		virtual DeviceInputID GetMaxInput() const override;
+		virtual DeviceInputID MaxInputID() const override;
 
-		virtual InputProperties GetInputProperties(DeviceInputID input) const override;
+		virtual InputProperties PropertiesOf(DeviceInputID input) const override;
 
-		virtual uint8_t GetStickCount() const override;
-		virtual uint8_t GetStickAxisCount(uint8_t stick_num) const override;
-		virtual uint8_t GetButtonCount() const override;
+		virtual uint8_t StickCount() const override;
+		virtual uint8_t StickAxisCount(uint8_t stick_num) const override;
+		virtual uint8_t ButtonCount() const override;
 
-		virtual bool IsValidNavigation(UINavigationInput input) const override;
-		virtual bool GetNavigation(UINavigationInput input) const override;
-		virtual bool GetNavigationLastFrame(UINavigationInput input) const override;
+		virtual bool IsNavigationValid(UINavigationInput input) const override;
+		virtual bool IsNavigationPressed(UINavigationInput input) const override;
+		virtual bool WasNavigationPressedLastFrame(UINavigationInput input) const override;
 
-		static constexpr uint64_t ButtonCount = 14;
+		static constexpr uint64_t DefaultButtonCount = 14;
 
 		enum class Axes
 		{
-			LeftStick_XAxis = ButtonCount,
+			LeftStick_XAxis = DefaultButtonCount,
 			LeftStick_YAxis,
 			RightStick_XAxis,
 			RightStick_YAxis,

@@ -19,6 +19,11 @@ namespace gamelib
 		Unpause,
 	};
 
+	enum class DebugValueFlags
+	{
+		Writeable,
+	};
+
 	struct IDebugger
 	{
 		virtual ~IDebugger() = default;
@@ -33,20 +38,20 @@ namespace gamelib
 
 		virtual void Text(std::string&& str) = 0;
 
-		virtual void Value(std::string_view name, vec2 const& val, bool writeable) = 0;
-		virtual void Value(std::string_view name, ivec2 const& val, bool writeable) = 0;
-		virtual void Value(std::string_view name, double const& val, bool writeable) = 0;
+		virtual void Value(std::string_view name, vec2 const& val, enum_flags<DebugValueFlags> flags) = 0;
+		virtual void Value(std::string_view name, ivec2 const& val, enum_flags<DebugValueFlags> flags) = 0;
+		virtual void Value(std::string_view name, double const& val, enum_flags<DebugValueFlags> flags) = 0;
 
 		template <typename T>
-		auto Value(std::string_view name, T& val)
+		auto Value(std::string_view name, T& val, enum_flags<DebugValueFlags> flags = {})
 		{
-			this->Value(name, const_cast<const T&>(val), !std::is_const_v<T>);
+			this->Value(name, const_cast<const T&>(val), flags | (std::is_const_v<T> ? DebugValueFlags::Writeable : DebugValueFlags{}));
 		}
 
 		template <typename T>
-		auto Value(std::string_view name, T&& val)
+		auto Value(std::string_view name, T&& val, enum_flags<DebugValueFlags> flags = {})
 		{
-			this->Value(name, const_cast<const T&>(val), false);
+			this->Value(name, const_cast<const T&>(val), flags);
 		}
 
 	protected:

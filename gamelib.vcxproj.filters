@@ -25,9 +25,6 @@
     <Filter Include="Source Files\Navigation">
       <UniqueIdentifier>{5ef19296-2b81-4ae1-aca2-5d38d9a051c9}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Resources">
-      <UniqueIdentifier>{a0252d04-6cb7-4e06-80ae-76f32a299504}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\Utils">
       <UniqueIdentifier>{e038444e-4666-49b6-8d6e-3e0b965e3af7}</UniqueIdentifier>
     </Filter>
@@ -37,14 +34,17 @@
     <Filter Include="Source Files\Debug">
       <UniqueIdentifier>{b923b5f0-302b-4574-977c-cc00ded81b12}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Input\Serialization">
-      <UniqueIdentifier>{731f41e2-648a-47a6-bc11-33a6d38dd65f}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\Scripting">
       <UniqueIdentifier>{5ddd92ae-669a-4a6f-a877-09f36da6633b}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source Files\Support">
       <UniqueIdentifier>{5a286a10-cc87-4445-a998-b21008b8bf57}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Resources">
+      <UniqueIdentifier>{cf7d35fe-b2fd-4d1f-a78a-23405c62c79e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Serialization">
+      <UniqueIdentifier>{731f41e2-648a-47a6-bc11-33a6d38dd65f}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -114,9 +114,6 @@
     <ClInclude Include="IResource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\Resources\Resource.h">
-      <Filter>Source Files\Resources</Filter>
-    </ClInclude>
     <ClInclude Include="include\Navigation\Navigation.h">
       <Filter>Source Files\Navigation</Filter>
     </ClInclude>
@@ -160,19 +157,19 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="include\Serialization\IArchiver.h">
-      <Filter>Source Files\Input\Serialization</Filter>
+      <Filter>Source Files\Serialization</Filter>
     </ClInclude>
     <ClInclude Include="include\Serialization\CSV.h">
-      <Filter>Source Files\Input\Serialization</Filter>
+      <Filter>Source Files\Serialization</Filter>
     </ClInclude>
     <ClInclude Include="include\Buffers.h">
-      <Filter>Source Files\Input\Serialization</Filter>
+      <Filter>Source Files\Serialization</Filter>
     </ClInclude>
     <ClInclude Include="include\Serialization\IOStreamBuffers.h">
-      <Filter>Source Files\Input\Serialization</Filter>
+      <Filter>Source Files\Serialization</Filter>
     </ClInclude>
     <ClInclude Include="include\Serialization\StringBuffers.h">
-      <Filter>Source Files\Input\Serialization</Filter>
+      <Filter>Source Files\Serialization</Filter>
     </ClInclude>
     <ClInclude Include="include\ErrorReporter.h">
       <Filter>Source Files\Support</Filter>
@@ -182,6 +179,12 @@
     </ClInclude>
     <ClInclude Include="include\Support\IOC.h">
       <Filter>Source Files\Support</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Resources\Files.h">
+      <Filter>Source Files\Resources</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Resources\Files.impl.h">
+      <Filter>Source Files\Resources</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

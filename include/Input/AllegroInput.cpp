@@ -45,54 +45,54 @@ namespace gamelib
 		}
 	};
 
-	std::string_view AllegroKeyboard::GetStringProperty(IInputDevice::StringProperty property) const
+	std::string_view AllegroKeyboard::StringPropertyValue(IInputDevice::StringProperty property) const
 	{
 		if (property == StringProperty::Name)
 			return "Main Keyboard";
 		return "";
 	}
 
-	glm::vec3 AllegroKeyboard::GetNumberProperty(NumberProperty property) const
+	glm::vec3 AllegroKeyboard::NumberPropertyValue(NumberProperty property) const
 	{
 		return glm::vec3{};
 	}
 
-	DeviceInputID AllegroKeyboard::GetMaxInput() const
+	DeviceInputID AllegroKeyboard::MaxInputID() const
 	{
 		return (int)KeyboardKey::Max;
 	}
 
-	double AllegroKeyboard::GetInputState(DeviceInputID input) const
+	double AllegroKeyboard::InputValue(DeviceInputID input) const
 	{
-		if (!IsValidInput(input))
+		if (!IsInputValid(input))
 			return 0;
 		return CurrentState[input].Down ? 1.0 : 0.0;
 	}
 
-	bool AllegroKeyboard::GetInputStateDigital(DeviceInputID input) const
+	bool AllegroKeyboard::IsInputPressed(DeviceInputID input) const
 	{
-		if (!IsValidInput(input))
+		if (!IsInputValid(input))
 			return false;
 		return CurrentState[input].Down;
 	}
 
-	double AllegroKeyboard::GetInputStateLastFrame(DeviceInputID input) const
+	double AllegroKeyboard::InputValueLastFrame(DeviceInputID input) const
 	{
-		if (!IsValidInput(input))
+		if (!IsInputValid(input))
 			return 0;
 		return LastFrameState[input].Down ? 1.0 : 0.0;
 	}
 
-	bool AllegroKeyboard::GetInputStateLastFrameDigital(DeviceInputID input) const
+	bool AllegroKeyboard::WasInputPressedLastFrame(DeviceInputID input) const
 	{
-		if (!IsValidInput(input))
+		if (!IsInputValid(input))
 			return false;
 		return LastFrameState[input].Down;
 	}
 
-	InputProperties AllegroKeyboard::GetInputProperties(DeviceInputID input) const
+	InputProperties AllegroKeyboard::PropertiesOf(DeviceInputID input) const
 	{
-		if (!IsValidInput(input))
+		if (!IsInputValid(input))
 			ReportInvalidInput(input);
 		return ButtonInputProperties{ magic_enum::enum_name((KeyboardKey)input) };
 	}
@@ -126,7 +126,7 @@ namespace gamelib
 		CurrentState[key].Down = false;
 	}
 
-	enum_flags<InputDeviceFlags> AllegroKeyboard::GetFlags() const
+	enum_flags<InputDeviceFlags> AllegroKeyboard::Flags() const
 	{
 		return enum_flags<InputDeviceFlags>();
 	}
@@ -145,47 +145,47 @@ namespace gamelib
 
 	/// Mouse
 
-	std::string_view AllegroMouse::GetStringProperty(IInputDevice::StringProperty property) const
+	std::string_view AllegroMouse::StringPropertyValue(IInputDevice::StringProperty property) const
 	{
 		if (property == StringProperty::Name)
 			return "Main Mouse";
 		return "";
 	}
 
-	DeviceInputID AllegroMouse::GetMaxInput() const
+	DeviceInputID AllegroMouse::MaxInputID() const
 	{
 		return TotalInputs;
 	}
 
-	double AllegroMouse::GetInputState(DeviceInputID input) const
+	double AllegroMouse::InputValue(DeviceInputID input) const
 	{
-		if (!IsValidInput(input))
+		if (!IsInputValid(input))
 			return 0.0;
 		return CurrentState[input];
 	}
 
-	bool AllegroMouse::GetInputStateDigital(DeviceInputID input) const
+	bool AllegroMouse::IsInputPressed(DeviceInputID input) const
 	{
-		if (!IsValidInput(input) || input >= ButtonCount)
+		if (!IsInputValid(input) || input >= ButtonCount)
 			return false;
 		return CurrentState[input] != 0;
 	}
 
-	double AllegroMouse::GetInputStateLastFrame(DeviceInputID input) const
+	double AllegroMouse::InputValueLastFrame(DeviceInputID input) const
 	{
-		if (!IsValidInput(input))
+		if (!IsInputValid(input))
 			return 0.0;
 		return LastFrameState[input];
 	}
 
-	bool AllegroMouse::GetInputStateLastFrameDigital(DeviceInputID input) const
+	bool AllegroMouse::WasInputPressedLastFrame(DeviceInputID input) const
 	{
-		if (!IsValidInput(input) || input >= ButtonCount)
+		if (!IsInputValid(input) || input >= ButtonCount)
 			return false;
 		return LastFrameState[input] != 0;
 	}
 
-	InputProperties AllegroMouse::GetInputProperties(DeviceInputID input) const
+	InputProperties AllegroMouse::PropertiesOf(DeviceInputID input) const
 	{
 		switch (input)
 		{
@@ -301,7 +301,7 @@ namespace gamelib
 	{
 	}
 
-	enum_flags<InputDeviceFlags> AllegroMouse::GetFlags() const
+	enum_flags<InputDeviceFlags> AllegroMouse::Flags() const
 	{
 		return enum_flags<InputDeviceFlags>();
 	}
@@ -316,7 +316,7 @@ namespace gamelib
 		return false;
 	}
 
-	glm::vec3 AllegroMouse::GetNumberProperty(NumberProperty property) const
+	glm::vec3 AllegroMouse::NumberPropertyValue(NumberProperty property) const
 	{
 		return glm::vec3();
 	}
@@ -353,7 +353,7 @@ namespace gamelib
 	}
 
 
-	std::string_view AllegroGamepad::GetStringProperty(IInputDevice::StringProperty property) const
+	std::string_view AllegroGamepad::StringPropertyValue(IInputDevice::StringProperty property) const
 	{
 		if (property == StringProperty::Name)
 			return mName;
@@ -361,14 +361,14 @@ namespace gamelib
 	}
 
 
-	DeviceInputID AllegroGamepad::GetMaxInput() const
+	DeviceInputID AllegroGamepad::MaxInputID() const
 	{
 		return mNumInputs;
 	}
 
-	double AllegroGamepad::GetInputState(DeviceInputID input) const
+	double AllegroGamepad::InputValue(DeviceInputID input) const
 	{
-		if (!IsValidInput(input)) return 0;
+		if (!IsInputValid(input)) return 0;
 		if (input < mButtons.size())
 		{
 			return CurrentState.Button[input];
@@ -380,14 +380,14 @@ namespace gamelib
 		}
 	}
 
-	bool AllegroGamepad::GetInputStateDigital(DeviceInputID input) const
+	bool AllegroGamepad::IsInputPressed(DeviceInputID input) const
 	{
-		return GetInputState(input) > 0.5;
+		return InputValue(input) > 0.5;
 	}
 
-	double AllegroGamepad::GetInputStateLastFrame(DeviceInputID input) const
+	double AllegroGamepad::InputValueLastFrame(DeviceInputID input) const
 	{
-		if (!IsValidInput(input)) return 0;
+		if (!IsInputValid(input)) return 0;
 		if (input < mButtons.size())
 		{
 			return LastFrameState.Button[input];
@@ -399,14 +399,14 @@ namespace gamelib
 		}
 	}
 
-	bool AllegroGamepad::GetInputStateLastFrameDigital(DeviceInputID input) const
+	bool AllegroGamepad::WasInputPressedLastFrame(DeviceInputID input) const
 	{
-		return GetInputStateLastFrame(input) > 0.5;
+		return InputValueLastFrame(input) > 0.5;
 	}
 
-	InputProperties AllegroGamepad::GetInputProperties(DeviceInputID input) const
+	InputProperties AllegroGamepad::PropertiesOf(DeviceInputID input) const
 	{
-		if (!IsValidInput(input)) return {};
+		if (!IsInputValid(input)) return {};
 		if (input < mButtons.size())
 		{
 			return mButtons[input];
@@ -434,38 +434,38 @@ namespace gamelib
 		return al_get_joystick_active(mJoystick);
 	}
 
-	uint8_t AllegroGamepad::GetStickCount() const
+	uint8_t AllegroGamepad::StickCount() const
 	{
 		return (uint8_t)mSticks.size();
 	}
 
-	uint8_t AllegroGamepad::GetStickAxisCount(uint8_t stick_num) const
+	uint8_t AllegroGamepad::StickAxisCount(uint8_t stick_num) const
 	{
 		if (stick_num < mSticks.size())
 			return mSticks[stick_num].NumAxes;
 		return 0;
 	}
 
-	uint8_t AllegroGamepad::GetButtonCount() const
+	uint8_t AllegroGamepad::ButtonCount() const
 	{
 		return (uint8_t)mButtons.size();
 	}
 
-	bool AllegroGamepad::GetButtonState(uint8_t button_num) const
+	bool AllegroGamepad::IsButtonPressed(uint8_t button_num) const
 	{
 		if (button_num < mButtons.size())
 			return CurrentState.Button[button_num] != 0;
 		return false;
 	}
 
-	glm::vec3 AllegroGamepad::GetStickState(uint8_t stick_num) const
+	glm::vec3 AllegroGamepad::StickValue(uint8_t stick_num) const
 	{
 		if (stick_num < mSticks.size())
 			return { CurrentState.Stick[stick_num].Axis[0], CurrentState.Stick[stick_num].Axis[1], CurrentState.Stick[stick_num].Axis[2] };
 		return {};
 	}
 
-	float AllegroGamepad::GetStickAxisState(uint8_t stick_num, uint8_t axis_num) const
+	float AllegroGamepad::StickAxisValue(uint8_t stick_num, uint8_t axis_num) const
 	{
 		if (stick_num < mSticks.size() && mSticks[stick_num].NumAxes < axis_num)
 			return CurrentState.Stick[stick_num].Axis[axis_num];
@@ -493,28 +493,28 @@ namespace gamelib
 		return { stick, axis };
 	}
 
-	bool AllegroGamepad::GetButtonStateLastFrame(uint8_t button_num) const
+	bool AllegroGamepad::WasButtonPressedLastFrame(uint8_t button_num) const
 	{
 		if (button_num < mButtons.size())
 			return LastFrameState.Button[button_num] != 0;
 		return false;
 	}
 
-	glm::vec3 AllegroGamepad::GetStickStateLastFrame(uint8_t stick_num) const
+	glm::vec3 AllegroGamepad::StickValueLastFrame(uint8_t stick_num) const
 	{
 		if (stick_num < mSticks.size())
 			return { LastFrameState.Stick[stick_num].Axis[0], LastFrameState.Stick[stick_num].Axis[1], LastFrameState.Stick[stick_num].Axis[2] };
 		return {};
 	}
 
-	float AllegroGamepad::GetStickAxisStateLastFrame(uint8_t stick_num, uint8_t axis_num) const
+	float AllegroGamepad::StickAxisValueLastFrame(uint8_t stick_num, uint8_t axis_num) const
 	{
 		if (stick_num < mSticks.size() && mSticks[stick_num].NumAxes < axis_num)
 			return LastFrameState.Stick[stick_num].Axis[axis_num];
 		return {};
 	}
 
-	enum_flags<InputDeviceFlags> AllegroGamepad::GetFlags() const
+	enum_flags<InputDeviceFlags> AllegroGamepad::Flags() const
 	{
 		return enum_flags<InputDeviceFlags>();
 	}
@@ -529,7 +529,7 @@ namespace gamelib
 		return false;
 	}
 
-	glm::vec3 AllegroGamepad::GetNumberProperty(NumberProperty property) const
+	glm::vec3 AllegroGamepad::NumberPropertyValue(NumberProperty property) const
 	{
 		return glm::vec3();
 	}
@@ -552,35 +552,35 @@ namespace gamelib
 		switch (event.type)
 		{
 		case ALLEGRO_EVENT_KEY_DOWN:
-			static_cast<AllegroKeyboard*>(GetKeyboard())->KeyPressed(event.keyboard.keycode);
+			static_cast<AllegroKeyboard*>(Keyboard())->KeyPressed(event.keyboard.keycode);
 			SetLastActiveDevice(mKeyboard, event.any.timestamp);
 			break;
 		case ALLEGRO_EVENT_KEY_CHAR:
 			SetLastActiveDevice(mKeyboard, event.any.timestamp);
 			break;
 		case ALLEGRO_EVENT_KEY_UP:
-			static_cast<AllegroKeyboard*>(GetKeyboard())->KeyReleased(event.keyboard.keycode);
+			static_cast<AllegroKeyboard*>(Keyboard())->KeyReleased(event.keyboard.keycode);
 			SetLastActiveDevice(mKeyboard, event.any.timestamp);
 			break;
 		case ALLEGRO_EVENT_MOUSE_AXES:
-			static_cast<AllegroMouse*>(GetMouse())->MouseWheelScrolled(event.mouse.dz, event.mouse.dw);
-			static_cast<AllegroMouse*>(GetMouse())->MouseMoved(event.mouse.x, event.mouse.y);
+			static_cast<AllegroMouse*>(Mouse())->MouseWheelScrolled(event.mouse.dz, event.mouse.dw);
+			static_cast<AllegroMouse*>(Mouse())->MouseMoved(event.mouse.x, event.mouse.y);
 			SetLastActiveDevice(mMouse, event.any.timestamp);
 			break;
 		case ALLEGRO_EVENT_MOUSE_BUTTON_DOWN:
-			static_cast<AllegroMouse*>(GetMouse())->MouseButtonPressed(MouseButton(event.mouse.button - 1));
+			static_cast<AllegroMouse*>(Mouse())->MouseButtonPressed(MouseButton(event.mouse.button - 1));
 			SetLastActiveDevice(mMouse, event.any.timestamp);
 			break;
 		case ALLEGRO_EVENT_MOUSE_BUTTON_UP:
-			static_cast<AllegroMouse*>(GetMouse())->MouseButtonReleased(MouseButton(event.mouse.button - 1));
+			static_cast<AllegroMouse*>(Mouse())->MouseButtonReleased(MouseButton(event.mouse.button - 1));
 			SetLastActiveDevice(mMouse, event.any.timestamp);
 			break;
 		case ALLEGRO_EVENT_MOUSE_ENTER_DISPLAY:
-			static_cast<AllegroMouse*>(GetMouse())->MouseEntered();
+			static_cast<AllegroMouse*>(Mouse())->MouseEntered();
 			SetLastActiveDevice(mMouse, event.any.timestamp);
 			break;
 		case ALLEGRO_EVENT_MOUSE_LEAVE_DISPLAY:
-			static_cast<AllegroMouse*>(GetMouse())->MouseLeft();
+			static_cast<AllegroMouse*>(Mouse())->MouseLeft();
 			SetLastActiveDevice(mMouse, event.any.timestamp);
 			break;
 
@@ -609,7 +609,7 @@ namespace gamelib
 	{
 		if (al_reconfigure_joysticks())
 		{
-			if (GetLastDeviceActive() == mFirstGamepad)
+			if (LastDeviceActive() == mFirstGamepad)
 				SetLastActiveDevice(nullptr, 0);
 			mFirstGamepad = nullptr;
 			mJoystickMap.clear();

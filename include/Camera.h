@@ -45,7 +45,7 @@ namespace gamelib
 		//vec2 LocalMousePosition() const; /// <- if MouseInView(), this is the camera space position of the mouse point over this camera
 		//vec2 WorldMousePosition() const; /// <- if MouseInView(), this is the world position of the mouse point through this camera
 
-		void SetFromDisplay(ALLEGRO_DISPLAY* display);
+		void SetFrom(ALLEGRO_DISPLAY* display);
 
 		vec2 ScreenSpaceToCameraSpace(vec2 screen_point) const;
 		vec2 ScreenSpaceToWorldSpace(vec2 screen_point) const;
@@ -63,24 +63,24 @@ namespace gamelib
 		world_pos_t ToWorldSpace(camera_pos_t pos) const { return world_pos_t{ CameraSpaceToWorldSpace(pos.get()) }; }
 		world_pos_t ToWorldSpace(screen_pos_t pos) const { return world_pos_t{ ScreenSpaceToWorldSpace(pos.get()) }; }
 
-		rec2 GetWorldBounds() const;
+		rec2 WorldBounds() const;
 		void SetWorldBounds(rec2 const& rect, radians_t rotation);
 
 		void SetWorldSize(vec2 size);
 		void SetWorldCenter(vec2 pos);
-		vec2 GetWorldCenter() const { return mWorldRect.center(); }
+		vec2 WorldCenter() const { return mWorldRect.center(); }
 
-		bool InViewport(ivec2 pos) const;
-		bool InViewport(screen_pos_t pos) const;
-		irec2 GetViewport() const;
+		bool ViewportContains(ivec2 pos) const;
+		bool ViewportContains(screen_pos_t pos) const;
+		irec2 Viewport() const;
 		void SetViewport(irec2 const& rect);
 
-		std::array<vec2, 4> GetWorldPolygon() const;
+		std::array<vec2, 4> WorldPolygon() const;
 
 		auto GetTransform() const -> ALLEGRO_TRANSFORM const& { return mTransformable.GetTransform(); }
 		auto GetInverseTransform() const -> ALLEGRO_TRANSFORM const& { return mTransformable.GetInverseTransform(); }
 
-		auto GetRotation() const -> radians_t { return mTransformable.GetRotation(); }
+		auto Rotation() const -> radians_t { return mTransformable.Rotation(); }
 		auto SetRotation(radians_t rot) -> void { mTransformable.SetRotation(rot); }
 
 		void ScreenZoom(vec2 screen_anchor, double zoom_by);

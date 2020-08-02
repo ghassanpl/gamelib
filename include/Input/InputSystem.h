@@ -7,6 +7,7 @@
 
 #include "InputDevice.h"
 #include "../ErrorReporter.h"
+#include "../Support/IOC.h"
 
 union ALLEGRO_EVENT;
 
@@ -19,16 +20,17 @@ namespace gamelib
 
 	struct IInputSystem
 	{
-		IErrorReporter& ErrorReporter;
+		std::shared_ptr<IErrorReporter> ErrorReporter;
+		std::shared_ptr<IDebugger> Debugger;
 
-		IInputSystem(IErrorReporter& errep) noexcept : ErrorReporter(errep) {}
+		IInputSystem(std::shared_ptr<IErrorReporter> error_reporter, std::shared_ptr<IDebugger> debugger) noexcept;
 		virtual ~IInputSystem() = default;
 
 		virtual void Init();
 
 		virtual void Update();
 
-		virtual void Debug(IDebugger& debugger);
+		virtual void Debug();
 
 		using InputDeviceIndex = size_t;
 
@@ -52,11 +54,11 @@ namespace gamelib
 		/// 
 		/// TODO: Maybe add a GenericDeviceType enum? { Keyboard, Mouse, Gamepad, Accelerometer, Compass, EnvironmentSensor, GPS, ... }
 
-		IKeyboardDevice* GetKeyboard() const { return mKeyboard; }
-		IMouseDevice* GetMouse() const { return mMouse; }
-		IGamepadDevice* GetFirstGamepad() const { return mFirstGamepad; }
+		IKeyboardDevice* Keyboard() const { return mKeyboard; }
+		IMouseDevice* Mouse() const { return mMouse; }
+		IGamepadDevice* FirstGamepad() const { return mFirstGamepad; }
 
-		std::vector<IInputDevice*> GetAllInputDevices() const;
+		std::vector<IInputDevice*> AllInputDevices() const;
 
 		struct Input
 		{
@@ -66,19 +68,22 @@ namespace gamelib
 			Input() = default;
 			
 			template <typename... ARGS>
-			Input(ARGS&&... args) requires std::is_constructible_v<InputID, ARGS...> 
+			Input(ARGS&&... args) 
+			requires std::is_constructible_v<InputID, ARGS...> 
 				: ActionID(std::forward<ARGS>(args)...)
 			{
 			}
 
 			template <typename... ARGS>
-			Input(PlayerID player, ARGS&&... args) requires std::is_constructible_v<InputID, ARGS...> 
+			Input(PlayerID player, ARGS&&... args) 
+			requires std::is_constructible_v<InputID, ARGS...> 
 				: Input(std::forward<ARGS>(args)...), Player(player)
 			{
 			}
 			
 			template <typename... ARGS>
-			Input(void const* player, ARGS&&... args) requires std::is_constructible_v<InputID, ARGS...> 
+			Input(void const* player, ARGS&&... args) 
+			requires std::is_constructible_v<InputID, ARGS...> 
 				: Input(std::forward<ARGS>(args)..., reinterpret_cast<PlayerID>(player))
 			{
 			}
@@ -139,29 +144,29 @@ namespace gamelib
 		bool WasNavigationReleased(UINavigationInput input_id);
 		int  NavigationRepeatCount(UINavigationInput input_id);
 
-		float GetAxis(Input of_input);
-		vec2 GetAxis2D(Input of_input);
+		float AxisValue(Input of_input);
+		vec2 Axis2DValue(Input of_input);
 
 		void ResetInput(Input input);
-		seconds_t GetInputTimePressed(Input input);
+		seconds_t InputPressedTime(Input input);
 
-		virtual vec2 GetMousePosition() const;
+		virtual vec2 MousePosition() const;
 
 		/// TODO: Input Command callbacks (Down, Up, Press, Hold, etc)
 
-		IInputDevice* GetLastDeviceActive() const { return mLastActiveDevice; }
+		IInputDevice* LastDeviceActive() const { return mLastActiveDevice; }
 
-		std::string GetButtonNamesForInput(Input input, std::string_view button_format);
-		std::string GetButtonNameForInput(Input input, std::string_view button_format);
+		std::string ButtonNamesForInput(Input input, std::string_view button_format);
+		std::string ButtonNameForInput(Input input, std::string_view button_format);
 
-		std::string GetButtonNamesForInput(Input input)
+		std::string ButtonNamesForInput(Input input)
 		{
-			return GetButtonNamesForInput(input, "{}");
+			return ButtonNamesForInput(input, "{}");
 		}
 
-		std::string GetButtonNameForInput(Input input)
+		std::string ButtonNameForInput(Input input)
 		{
-			return GetButtonNameForInput(input, "{}");
+			return ButtonNameForInput(input, "{}");
 		}
 
 	protected:
@@ -182,8 +187,8 @@ namespace gamelib
 		std::vector<std::unique_ptr<IInputDevice>> mInputDevices;
 		std::map<void*, IGamepadDevice*> mJoystickMap;
 
-		IInputDevice* GetInputDevice(InputDeviceIndex id);
-		std::string GetInputDeviceName(InputDeviceIndex id);
+		IInputDevice* InputDevice(InputDeviceIndex id);
+		std::string InputDeviceName(InputDeviceIndex id);
 
 		struct PlayerInformation
 		{

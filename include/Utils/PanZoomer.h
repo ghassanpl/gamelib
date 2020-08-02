@@ -7,8 +7,8 @@ namespace gamelib
 {
 	struct PanZoomer
 	{
-		IInputSystem& Input;
-		ICamera& Camera;
+		std::shared_ptr<IInputSystem> Input;
+		std::shared_ptr<ICamera> Camera;
 		InputID GrabInput = InvalidInput;
 		InputID ZoomInput = InvalidInput;
 		InputID PositionInput = InvalidInput;
@@ -18,38 +18,38 @@ namespace gamelib
 
 		bool Grabbed() const { return mGrabbed; }
 
-		PanZoomer(IInputSystem& input, ICamera& camera, InputID grab_input, InputID zoom_input, InputID position)
-			: Input(input), Camera(camera), GrabInput(grab_input), ZoomInput(zoom_input), PositionInput(position)
+		PanZoomer(std::shared_ptr<IInputSystem> input, std::shared_ptr<ICamera> camera, InputID grab_input, InputID zoom_input, InputID position)
+			: Input(std::move(input)), Camera(std::move(camera)), GrabInput(grab_input), ZoomInput(zoom_input), PositionInput(position)
 		{
 
 		}
-		PanZoomer(IInputSystem& input, ICamera& camera)
-			: Input(input), Camera(camera)
+		PanZoomer(std::shared_ptr<IInputSystem> input, std::shared_ptr<ICamera> camera)
+			: Input(std::move(input)), Camera(std::move(camera))
 		{
 
 		}
 
 		bool Update(seconds_t time)
 		{
-			const auto pos = GetMouseScreenPos();
+			const auto mouse_pos = GetMouseScreenPos();
 
 			if (mGrabbed)
 			{
 				if (IsGrabPressed())
 				{
 					/// move
-					const auto diff = screen_pos_t{ pos.Value - mLastMousePos.Value };
-					mLastMousePos = pos;
-					Camera.Pan(diff);
+					const auto diff = screen_pos_t{ mouse_pos.Value - mLastMousePos.Value };
+					mLastMousePos = mouse_pos;
+					Camera->Pan(diff);
 					if (OnDrag) OnDrag(diff);
 				}
 				else
 				{
 					/// release
 					mGrabbed = false;
-					if (OnRelease) OnRelease(pos);
+					if (OnRelease) OnRelease(mouse_pos);
 
-					const auto vel = screen_pos_t{ (pos.Value - mLastMousePos.Value) / (float)time };
+					const auto vel = screen_pos_t{ (mouse_pos.Value - mLastMousePos.Value) / (float)time };
 					if (vel->length() > MinThrowSpeed && OnThrow)
 						OnThrow(vel);
 				}
@@ -59,21 +59,21 @@ namespace gamelib
 				/// grab
 				if (WasGrabPressed())
 				{
-					if (Camera.InViewport(pos.Value))
+					if (Camera->ViewportContains(mouse_pos.Value))
 					{
 						mGrabbed = true;
-						mLastMousePos = pos;
-						if (OnGrab) OnGrab(pos);
+						mLastMousePos = mouse_pos;
+						if (OnGrab) OnGrab(mouse_pos);
 					}
 				}
 			}
 
-			if (Camera.InViewport(pos.Value))
+			if (Camera->ViewportContains(mouse_pos.Value))
 			{
 				auto zoom = GetZoomInput();
 				if (zoom != 0)
 				{
-					Camera.ScreenZoom(pos.Value, -zoom * ZoomSpeed);
+					Camera->ScreenZoom(mouse_pos.Value, -zoom * ZoomSpeed);
 					return true;
 				}
 			}
@@ -94,33 +94,33 @@ namespace gamelib
 		screen_pos_t GetMouseScreenPos() const
 		{
 			if (PositionInput == InvalidInput)
-				return screen_pos_t{ Input.GetMouse()->GetInputState(Input.GetMouse()->GetXAxisInput()), Input.GetMouse()->GetInputState(Input.GetMouse()->GetYAxisInput()) };
+				return screen_pos_t{ Input->Mouse()->InputValue(Input->Mouse()->XAxisInputID()), Input->Mouse()->InputValue(Input->Mouse()->YAxisInputID()) };
 			else
-				return screen_pos_t{ Input.GetAxis2D(PositionInput) };
+				return screen_pos_t{ Input->Axis2DValue(PositionInput) };
 		}
 
 		double GetZoomInput() const
 		{
 			if (ZoomInput == InvalidInput)
-				return Input.GetMouse()->GetInputState(Input.GetMouse()->GetVerticalWheelInput());
+				return Input->Mouse()->InputValue(Input->Mouse()->VerticalWheelInputID());
 			else
-				return Input.GetAxis(ZoomInput);
+				return Input->AxisValue(ZoomInput);
 		}
 
 		bool WasGrabPressed() const
 		{
 			if (GrabInput == InvalidInput)
-				return Input.WasButtonPressed(MouseButton::Middle);
+				return Input->WasButtonPressed(MouseButton::Middle);
 			else
-				return Input.WasButtonPressed(GrabInput);
+				return Input->WasButtonPressed(GrabInput);
 		}
 
 		bool IsGrabPressed() const
 		{
 			if (GrabInput == InvalidInput)
-				return Input.IsButtonPressed(MouseButton::Middle);
+				return Input->IsButtonPressed(MouseButton::Middle);
 			else
-				return Input.IsButtonPressed(GrabInput);
+				return Input->IsButtonPressed(GrabInput);
 		}
 	};
 }

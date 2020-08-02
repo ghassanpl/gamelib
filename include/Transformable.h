@@ -9,13 +9,13 @@ namespace gamelib
 	struct Transformable
 	{
 
-		auto GetPosition() const -> vec2 { return mPosition; }
+		auto Position() const -> vec2 { return mPosition; }
 		auto SetPosition(vec2 pos) -> void { mPosition = pos; mTransformUpdated = false; }
-		auto GetOrigin() const -> vec2 { return mOrigin; }
+		auto Origin() const -> vec2 { return mOrigin; }
 		auto SetOrigin(vec2 pos) -> void { mOrigin = pos; mTransformUpdated = false; }
-		auto GetScale() const -> vec2 { return mScale; }
+		auto Scale() const -> vec2 { return mScale; }
 		auto SetScale(vec2 pos) -> void { mScale = pos; mTransformUpdated = false; }
-		auto GetRotation() const -> radians_t { return mRotation; }
+		auto Rotation() const -> radians_t { return mRotation; }
 		auto SetRotation(radians_t rot) -> void { mRotation = rot; mTransformUpdated = false; }
 
 		auto GetTransform() const->ALLEGRO_TRANSFORM const&;

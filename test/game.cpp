@@ -39,14 +39,18 @@ void Game::Init()
 	al_add_new_bitmap_flag(ALLEGRO_MAG_LINEAR);
 	al_add_new_bitmap_flag(ALLEGRO_NO_PREMULTIPLIED_ALPHA);
 
-	mInput.Init();
-	mInput.MapKeyAndButton("up", KeyboardKey::W, XboxGamepadButton::Up);
-	mInput.MapKeyAndButton("down", KeyboardKey::S, XboxGamepadButton::Down);
-	mInput.MapKeyAndButton("left", KeyboardKey::A, XboxGamepadButton::Left);
-	mInput.MapKeyAndButton("right", KeyboardKey::D, XboxGamepadButton::Right);
+	mReporter = std::make_shared<IErrorReporter>();
+	mDebugger = std::make_shared<AllegroImGuiDebugger>();
+	mInput = std::make_shared<AllegroInput>(mReporter, mDebugger);
+
+	mInput->Init();
+	mInput->MapKeyAndButton("up", KeyboardKey::W, XboxGamepadButton::Up);
+	mInput->MapKeyAndButton("down", KeyboardKey::S, XboxGamepadButton::Down);
+	mInput->MapKeyAndButton("left", KeyboardKey::A, XboxGamepadButton::Left);
+	mInput->MapKeyAndButton("right", KeyboardKey::D, XboxGamepadButton::Right);
 
 	al_identity_transform(&mUICamera);
-	mCamera.SetFromDisplay(mDisplay);
+	mCamera.SetFrom(mDisplay);
 }
 
 void Game::Load()
@@ -73,14 +77,14 @@ void Game::Loop()
 
 void Game::NewFrame()
 {
-	mInput.Update();
+	mInput->Update();
 	mTiming.Update();
 
 	mDT = mTiming.TimeSinceLastFrame();
 
 	ImGui::Allegro::NewFrame(mDisplay, mDT);
 
-	mDebugger.Value("FPS", 1.0 / mDT);
+	mDebugger->Value("FPS", 1.0 / mDT);
 }
 
 void Game::Events()
@@ -97,7 +101,7 @@ void Game::Events()
 		}
 
 		if (!ImGui::IsAnyWindowHovered())
-			mInput.ProcessEvent(event);
+			mInput->ProcessEvent(event);
 		ImGui::Allegro::ProcessEvent(&event);
 	}
 }
@@ -116,7 +120,7 @@ void Game::Debug()
 	{
 		if (ImGui::BeginTabItem("Input"))
 		{
-			mInput.Debug(mDebugger);
+			mInput->Debug();
 			ImGui::EndTabItem();
 		}
 		ImGui::EndTabBar();

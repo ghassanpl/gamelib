@@ -37,6 +37,7 @@
 #include <Serialization/IOStreamBuffers.h>
 #include <Serialization/CSV.h>
 #include <Debug/AllegroImGuiDebugger.h>
+#include <Resources/Files.h>
 
 #include <rsl/RSL.h>
 #include <rsl/ExecutionContext.h>
@@ -116,16 +117,15 @@ private:
 	ALLEGRO_FONT* mFont = nullptr;
 	ALLEGRO_FONT* mBigFont = nullptr;
 
-	IErrorReporter mReporter;
 	TimingSystem mTiming{ al_get_time };
-	AllegroInput mInput{ mReporter };
+	std::shared_ptr<IErrorReporter> mReporter;
+	std::shared_ptr<AllegroInput> mInput;
+	std::shared_ptr<IDebugger> mDebugger;
+
 	ICamera mCamera;
 	vec2 mCameraTarget{};
-	//TileObject* mCameraTarget = nullptr;
 	float mCameraSpeed = 15.0f;
 	bool mCameraFocus = true;
-	PanZoomer mPanZoomer{ mInput, mCamera };
-	AllegroImGuiDebugger mDebugger;
 
 	bool mQuit = false;
 	double mDT = 0;

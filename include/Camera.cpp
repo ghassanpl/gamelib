@@ -6,10 +6,10 @@ namespace gamelib
 
 	ICamera::ICamera(ALLEGRO_DISPLAY* display)
 	{
-		SetFromDisplay(display);
+		SetFrom(display);
 	}
 	
-	void ICamera::SetFromDisplay(ALLEGRO_DISPLAY* display)
+	void ICamera::SetFrom(ALLEGRO_DISPLAY* display)
 	{
 		auto size = irec2::from_size(0, 0, al_get_display_width(display), al_get_display_height(display));
 		SetWorldBounds(size, radians_t{ 0.0f });
@@ -24,7 +24,7 @@ namespace gamelib
 
 	vec2 ICamera::ScreenSpaceToCameraSpace(vec2 screen_point) const
 	{
-		return GetViewport().to_rect_space(screen_point);
+		return Viewport().to_rect_space(screen_point);
 	}
 
 	vec2 ICamera::ScreenSpaceToWorldSpace(vec2 screen_point) const
@@ -51,14 +51,14 @@ namespace gamelib
 
 	vec2 ICamera::CameraSpaceToScreenSpace(vec2 camera_point) const
 	{
-		return GetViewport().to_world_space(camera_point);
+		return Viewport().to_world_space(camera_point);
 	}
 
-	rec2 ICamera::GetWorldBounds() const
+	rec2 ICamera::WorldBounds() const
 	{
 		auto p1 = CameraSpaceToWorldSpace({ 0, 0 });
 		auto p4 = CameraSpaceToWorldSpace({ 1, 1 });
-		if (GetRotation().Value == 0)
+		if (Rotation().Value == 0)
 			return rec2{ p1.x, p1.y, p4.x, p4.y };
 
 		auto p2 = CameraSpaceToWorldSpace({ 0, 1 });
@@ -91,7 +91,7 @@ namespace gamelib
 		UpdatePositions();
 	}
 
-	std::array<vec2, 4> ICamera::GetWorldPolygon() const
+	std::array<vec2, 4> ICamera::WorldPolygon() const
 	{
 		return { CameraSpaceToWorldSpace({ 0, 0 }), CameraSpaceToWorldSpace({ 0, 1 }) , CameraSpaceToWorldSpace({ 1, 1 }), CameraSpaceToWorldSpace({ 1, 0 }) };
 	}
@@ -103,17 +103,17 @@ namespace gamelib
 		mTransformable.SetScale(vec2{ mViewport.size() } / mWorldRect.size());
 	}
 
-	bool ICamera::InViewport(ivec2 pos) const
+	bool ICamera::ViewportContains(ivec2 pos) const
 	{
-		return GetViewport().contains(pos);
+		return Viewport().contains(pos);
 	}
 
-	bool ICamera::InViewport(screen_pos_t pos) const
+	bool ICamera::ViewportContains(screen_pos_t pos) const
 	{
-		return GetViewport().contains(pos.Value);
+		return Viewport().contains(pos.Value);
 	}
 
-	irec2 ICamera::GetViewport() const
+	irec2 ICamera::Viewport() const
 	{
 		return mViewport;
 	}
@@ -151,6 +151,6 @@ namespace gamelib
 
 		UpdatePositions();
 		auto new_world_anchor = ScreenSpaceToWorldSpace(screen_anchor);
-		SetWorldCenter(GetWorldCenter() + (world_anchor - new_world_anchor));
+		SetWorldCenter(WorldCenter() + (world_anchor - new_world_anchor));
 	}
 }

@@ -7,15 +7,15 @@
 namespace gamelib
 {
 
-	std::string_view IInputDevice::GetName() const { return GetStringProperty(StringProperty::Name); }
+	std::string_view IInputDevice::Name() const { return StringPropertyValue(StringProperty::Name); }
 
-	OutputProperties IInputDevice::GetOutputProperties(DeviceOutputID input) const
+	OutputProperties IInputDevice::OutputProperties(DeviceOutputID input) const
 	{
-		ParentSystem.ErrorReporter.NewError("Input device has no output properties").Value("Device", GetName()).Perform();
+		ParentSystem.ErrorReporter->NewError("Input device has no output properties").Value("Device", Name()).Perform();
 		std::terminate();
 	}
 
-	bool IKeyboardDevice::IsValidNavigation(UINavigationInput input) const
+	bool IKeyboardDevice::IsNavigationValid(UINavigationInput input) const
 	{
 		switch (input)
 		{
@@ -45,20 +45,20 @@ namespace gamelib
 		return false;
 	}
 
-	bool IKeyboardDevice::GetNavigation(UINavigationInput input) const
+	bool IKeyboardDevice::IsNavigationPressed(UINavigationInput input) const
 	{
 		switch (input)
 		{
-		case UINavigationInput::Accept: return GetInputStateDigital((DeviceInputID)KeyboardKey::Enter);
-		case UINavigationInput::Cancel: return GetInputStateDigital((DeviceInputID)KeyboardKey::Escape);
-		case UINavigationInput::Left: return GetInputStateDigital((DeviceInputID)KeyboardKey::Left);
-		case UINavigationInput::Right: return GetInputStateDigital((DeviceInputID)KeyboardKey::Right);
-		case UINavigationInput::Up: return GetInputStateDigital((DeviceInputID)KeyboardKey::Up);
-		case UINavigationInput::Down: return GetInputStateDigital((DeviceInputID)KeyboardKey::Down);
-		case UINavigationInput::Home: return GetInputStateDigital((DeviceInputID)KeyboardKey::Home);
-		case UINavigationInput::End: return GetInputStateDigital((DeviceInputID)KeyboardKey::End);
-		case UINavigationInput::PageUp: return GetInputStateDigital((DeviceInputID)KeyboardKey::PgUp);
-		case UINavigationInput::PageDown: return GetInputStateDigital((DeviceInputID)KeyboardKey::PgDn);
+		case UINavigationInput::Accept: return IsInputPressed((DeviceInputID)KeyboardKey::Enter);
+		case UINavigationInput::Cancel: return IsInputPressed((DeviceInputID)KeyboardKey::Escape);
+		case UINavigationInput::Left: return IsInputPressed((DeviceInputID)KeyboardKey::Left);
+		case UINavigationInput::Right: return IsInputPressed((DeviceInputID)KeyboardKey::Right);
+		case UINavigationInput::Up: return IsInputPressed((DeviceInputID)KeyboardKey::Up);
+		case UINavigationInput::Down: return IsInputPressed((DeviceInputID)KeyboardKey::Down);
+		case UINavigationInput::Home: return IsInputPressed((DeviceInputID)KeyboardKey::Home);
+		case UINavigationInput::End: return IsInputPressed((DeviceInputID)KeyboardKey::End);
+		case UINavigationInput::PageUp: return IsInputPressed((DeviceInputID)KeyboardKey::PgUp);
+		case UINavigationInput::PageDown: return IsInputPressed((DeviceInputID)KeyboardKey::PgDn);
 		case UINavigationInput::Back:
 		case UINavigationInput::Forward:
 		case UINavigationInput::Menu:
@@ -74,20 +74,20 @@ namespace gamelib
 		return false;
 	}
 
-	bool IKeyboardDevice::GetNavigationLastFrame(UINavigationInput input) const
+	bool IKeyboardDevice::WasNavigationPressedLastFrame(UINavigationInput input) const
 	{
 		switch (input)
 		{
-		case UINavigationInput::Accept: return GetInputStateLastFrameDigital((DeviceInputID)KeyboardKey::Enter);
-		case UINavigationInput::Cancel: return GetInputStateLastFrameDigital((DeviceInputID)KeyboardKey::Escape);
-		case UINavigationInput::Left: return GetInputStateLastFrameDigital((DeviceInputID)KeyboardKey::Left);
-		case UINavigationInput::Right: return GetInputStateLastFrameDigital((DeviceInputID)KeyboardKey::Right);
-		case UINavigationInput::Up: return GetInputStateLastFrameDigital((DeviceInputID)KeyboardKey::Up);
-		case UINavigationInput::Down: return GetInputStateLastFrameDigital((DeviceInputID)KeyboardKey::Down);
-		case UINavigationInput::Home: return GetInputStateLastFrameDigital((DeviceInputID)KeyboardKey::Home);
-		case UINavigationInput::End: return GetInputStateLastFrameDigital((DeviceInputID)KeyboardKey::End);
-		case UINavigationInput::PageUp: return GetInputStateLastFrameDigital((DeviceInputID)KeyboardKey::PgUp);
-		case UINavigationInput::PageDown: return GetInputStateLastFrameDigital((DeviceInputID)KeyboardKey::PgDn);
+		case UINavigationInput::Accept: return WasInputPressedLastFrame((DeviceInputID)KeyboardKey::Enter);
+		case UINavigationInput::Cancel: return WasInputPressedLastFrame((DeviceInputID)KeyboardKey::Escape);
+		case UINavigationInput::Left: return WasInputPressedLastFrame((DeviceInputID)KeyboardKey::Left);
+		case UINavigationInput::Right: return WasInputPressedLastFrame((DeviceInputID)KeyboardKey::Right);
+		case UINavigationInput::Up: return WasInputPressedLastFrame((DeviceInputID)KeyboardKey::Up);
+		case UINavigationInput::Down: return WasInputPressedLastFrame((DeviceInputID)KeyboardKey::Down);
+		case UINavigationInput::Home: return WasInputPressedLastFrame((DeviceInputID)KeyboardKey::Home);
+		case UINavigationInput::End: return WasInputPressedLastFrame((DeviceInputID)KeyboardKey::End);
+		case UINavigationInput::PageUp: return WasInputPressedLastFrame((DeviceInputID)KeyboardKey::PgUp);
+		case UINavigationInput::PageDown: return WasInputPressedLastFrame((DeviceInputID)KeyboardKey::PgDn);
 		case UINavigationInput::Back:
 		case UINavigationInput::Forward:
 		case UINavigationInput::Menu:
@@ -103,7 +103,7 @@ namespace gamelib
 		return false;
 	}
 
-	bool IMouseDevice::IsValidNavigation(UINavigationInput input) const
+	bool IMouseDevice::IsNavigationValid(UINavigationInput input) const
 	{
 		switch (input)
 		{
@@ -115,10 +115,10 @@ namespace gamelib
 			return true;
 		case UINavigationInput::ScrollUp:
 		case UINavigationInput::ScrollDown:
-			return GetVerticalWheelInput() != InvalidDeviceInputID;
+			return VerticalWheelInputID() != InvalidDeviceInputID;
 		case UINavigationInput::ScrollLeft:
 		case UINavigationInput::ScrollRight:
-			return GetHorizontalWheelInput() != InvalidDeviceInputID;
+			return HorizontalWheelInputID() != InvalidDeviceInputID;
 
 		case UINavigationInput::Left:
 		case UINavigationInput::Right:
@@ -139,16 +139,16 @@ namespace gamelib
 		return false;
 	}
 
-	bool IMouseDevice::GetNavigation(UINavigationInput input) const
+	bool IMouseDevice::IsNavigationPressed(UINavigationInput input) const
 	{
 		switch (input)
 		{
-		case UINavigationInput::Accept: return GetInputStateDigital((DeviceInputID)MouseButton::Left);
-		case UINavigationInput::Cancel: return GetInputStateDigital((DeviceInputID)MouseButton::Right);
-		case UINavigationInput::ScrollUp: return GetInputState(GetVerticalWheelInput()) < 0;
-		case UINavigationInput::ScrollDown: return GetInputState(GetVerticalWheelInput()) > 0;
-		case UINavigationInput::ScrollLeft: return GetInputState(GetHorizontalWheelInput()) < 0;
-		case UINavigationInput::ScrollRight: return GetInputState(GetHorizontalWheelInput()) > 0;
+		case UINavigationInput::Accept: return IsInputPressed((DeviceInputID)MouseButton::Left);
+		case UINavigationInput::Cancel: return IsInputPressed((DeviceInputID)MouseButton::Right);
+		case UINavigationInput::ScrollUp: return InputValue(VerticalWheelInputID()) < 0;
+		case UINavigationInput::ScrollDown: return InputValue(VerticalWheelInputID()) > 0;
+		case UINavigationInput::ScrollLeft: return InputValue(HorizontalWheelInputID()) < 0;
+		case UINavigationInput::ScrollRight: return InputValue(HorizontalWheelInputID()) > 0;
 
 		case UINavigationInput::Left:
 		case UINavigationInput::Right:
@@ -169,16 +169,16 @@ namespace gamelib
 		return false;
 	}
 
-	bool IMouseDevice::GetNavigationLastFrame(UINavigationInput input) const
+	bool IMouseDevice::WasNavigationPressedLastFrame(UINavigationInput input) const
 	{
 		switch (input)
 		{
-		case UINavigationInput::Accept: return GetInputStateLastFrameDigital((DeviceInputID)MouseButton::Left);
-		case UINavigationInput::Cancel: return GetInputStateLastFrameDigital((DeviceInputID)MouseButton::Right);
-		case UINavigationInput::ScrollUp: return GetInputStateLastFrame(GetVerticalWheelInput()) < 0;
-		case UINavigationInput::ScrollDown: return GetInputStateLastFrame(GetVerticalWheelInput()) > 0;
-		case UINavigationInput::ScrollLeft: return GetInputStateLastFrame(GetHorizontalWheelInput()) < 0;
-		case UINavigationInput::ScrollRight: return GetInputStateLastFrame(GetHorizontalWheelInput()) > 0;
+		case UINavigationInput::Accept: return WasInputPressedLastFrame((DeviceInputID)MouseButton::Left);
+		case UINavigationInput::Cancel: return WasInputPressedLastFrame((DeviceInputID)MouseButton::Right);
+		case UINavigationInput::ScrollUp: return InputValueLastFrame(VerticalWheelInputID()) < 0;
+		case UINavigationInput::ScrollDown: return InputValueLastFrame(VerticalWheelInputID()) > 0;
+		case UINavigationInput::ScrollLeft: return InputValueLastFrame(HorizontalWheelInputID()) < 0;
+		case UINavigationInput::ScrollRight: return InputValueLastFrame(HorizontalWheelInputID()) > 0;
 
 		case UINavigationInput::Left:
 		case UINavigationInput::Right:
@@ -199,7 +199,7 @@ namespace gamelib
 		return false;
 	}
 
-	DeviceInputID IXboxGamepadDevice::GetMaxInput() const
+	DeviceInputID IXboxGamepadDevice::MaxInputID() const
 	{
 		return 20;
 	}
@@ -227,10 +227,10 @@ namespace gamelib
 		}
 	};
 
-	InputProperties IXboxGamepadDevice::GetInputProperties(DeviceInputID input) const
+	InputProperties IXboxGamepadDevice::PropertiesOf(DeviceInputID input) const
 	{
-		if (!IsValidInput(input)) return {};
-		if (input < ButtonCount)
+		if (!IsInputValid(input)) return {};
+		if (input < DefaultButtonCount)
 		{
 			switch ((XboxGamepadButton)input)
 			{
@@ -252,7 +252,7 @@ namespace gamelib
 		}
 		else
 		{
-			auto axis = input - ButtonCount;
+			auto axis = input - DefaultButtonCount;
 			switch (axis)
 			{
 			case 0: return XboxStickAxisInputProperties("Left Stick X Axis");
@@ -266,22 +266,22 @@ namespace gamelib
 		return {};
 	}
 
-	uint8_t IXboxGamepadDevice::GetStickCount() const
+	uint8_t IXboxGamepadDevice::StickCount() const
 	{
 		return 2;
 	}
 
-	uint8_t IXboxGamepadDevice::GetStickAxisCount(uint8_t stick_num) const
+	uint8_t IXboxGamepadDevice::StickAxisCount(uint8_t stick_num) const
 	{
 		return 2;
 	}
 
-	uint8_t IXboxGamepadDevice::GetButtonCount() const
+	uint8_t IXboxGamepadDevice::ButtonCount() const
 	{
-		return ButtonCount;
+		return DefaultButtonCount;
 	}
 
-	bool IXboxGamepadDevice::IsValidNavigation(UINavigationInput input) const
+	bool IXboxGamepadDevice::IsNavigationValid(UINavigationInput input) const
 	{
 		switch (input)
 		{
@@ -312,28 +312,28 @@ namespace gamelib
 		return false;
 	}
 
-	bool IXboxGamepadDevice::GetNavigation(UINavigationInput input) const
+	bool IXboxGamepadDevice::IsNavigationPressed(UINavigationInput input) const
 	{
 		switch (input)
 		{
-		case UINavigationInput::Accept: return GetInputStateDigital((DeviceInputID)XboxGamepadButton::A);
-		case UINavigationInput::Cancel: return GetInputStateDigital((DeviceInputID)XboxGamepadButton::B);
-		case UINavigationInput::Menu: return GetInputStateDigital((DeviceInputID)XboxGamepadButton::Start);
-		case UINavigationInput::View: return GetInputStateDigital((DeviceInputID)XboxGamepadButton::Back);
-		case UINavigationInput::Left: return GetInputStateDigital((DeviceInputID)XboxGamepadButton::Left);
-		case UINavigationInput::Right: return GetInputStateDigital((DeviceInputID)XboxGamepadButton::Right);
-		case UINavigationInput::Up: return GetInputStateDigital((DeviceInputID)XboxGamepadButton::Up);
-		case UINavigationInput::Down: return GetInputStateDigital((DeviceInputID)XboxGamepadButton::Down);
-		case UINavigationInput::Back: return GetInputStateDigital((DeviceInputID)XboxGamepadButton::LeftBumper);
-		case UINavigationInput::Forward: return GetInputStateDigital((DeviceInputID)XboxGamepadButton::RightBumper);
-		case UINavigationInput::PageUp: return GetStickAxisState(0, 0) < -0.1;
-		case UINavigationInput::PageDown: return GetStickAxisState(0, 0) > 0.1;
-		case UINavigationInput::PageLeft: return GetStickAxisState(0, 1) < -0.1;
-		case UINavigationInput::PageRight: return GetStickAxisState(0, 1) > 0.1;
-		case UINavigationInput::ScrollUp: return GetStickAxisState(1, 0) < -0.1;
-		case UINavigationInput::ScrollDown:	return GetStickAxisState(1, 0) > 0.1;
-		case UINavigationInput::ScrollLeft:	return GetStickAxisState(1, 1) < -0.1;
-		case UINavigationInput::ScrollRight: return GetStickAxisState(1, 1) > 0.1;
+		case UINavigationInput::Accept: return IsInputPressed((DeviceInputID)XboxGamepadButton::A);
+		case UINavigationInput::Cancel: return IsInputPressed((DeviceInputID)XboxGamepadButton::B);
+		case UINavigationInput::Menu: return IsInputPressed((DeviceInputID)XboxGamepadButton::Start);
+		case UINavigationInput::View: return IsInputPressed((DeviceInputID)XboxGamepadButton::Back);
+		case UINavigationInput::Left: return IsInputPressed((DeviceInputID)XboxGamepadButton::Left);
+		case UINavigationInput::Right: return IsInputPressed((DeviceInputID)XboxGamepadButton::Right);
+		case UINavigationInput::Up: return IsInputPressed((DeviceInputID)XboxGamepadButton::Up);
+		case UINavigationInput::Down: return IsInputPressed((DeviceInputID)XboxGamepadButton::Down);
+		case UINavigationInput::Back: return IsInputPressed((DeviceInputID)XboxGamepadButton::LeftBumper);
+		case UINavigationInput::Forward: return IsInputPressed((DeviceInputID)XboxGamepadButton::RightBumper);
+		case UINavigationInput::PageUp: return StickAxisValue(0, 0) < -0.1;
+		case UINavigationInput::PageDown: return StickAxisValue(0, 0) > 0.1;
+		case UINavigationInput::PageLeft: return StickAxisValue(0, 1) < -0.1;
+		case UINavigationInput::PageRight: return StickAxisValue(0, 1) > 0.1;
+		case UINavigationInput::ScrollUp: return StickAxisValue(1, 0) < -0.1;
+		case UINavigationInput::ScrollDown:	return StickAxisValue(1, 0) > 0.1;
+		case UINavigationInput::ScrollLeft:	return StickAxisValue(1, 1) < -0.1;
+		case UINavigationInput::ScrollRight: return StickAxisValue(1, 1) > 0.1;
 
 		case UINavigationInput::Home:
 		case UINavigationInput::End:
@@ -342,28 +342,28 @@ namespace gamelib
 		return false;
 	}
 
-	bool IXboxGamepadDevice::GetNavigationLastFrame(UINavigationInput input) const
+	bool IXboxGamepadDevice::WasNavigationPressedLastFrame(UINavigationInput input) const
 	{
 		switch (input)
 		{
-		case UINavigationInput::Accept: return GetInputStateLastFrameDigital((DeviceInputID)XboxGamepadButton::A);
-		case UINavigationInput::Cancel: return GetInputStateLastFrameDigital((DeviceInputID)XboxGamepadButton::B);
-		case UINavigationInput::Menu: return GetInputStateLastFrameDigital((DeviceInputID)XboxGamepadButton::Start);
-		case UINavigationInput::View: return GetInputStateLastFrameDigital((DeviceInputID)XboxGamepadButton::Back);
-		case UINavigationInput::Left: return GetInputStateLastFrameDigital((DeviceInputID)XboxGamepadButton::Left);
-		case UINavigationInput::Right: return GetInputStateLastFrameDigital((DeviceInputID)XboxGamepadButton::Right);
-		case UINavigationInput::Up: return GetInputStateLastFrameDigital((DeviceInputID)XboxGamepadButton::Up);
-		case UINavigationInput::Down: return GetInputStateLastFrameDigital((DeviceInputID)XboxGamepadButton::Down);
-		case UINavigationInput::Back: return GetInputStateLastFrameDigital((DeviceInputID)XboxGamepadButton::LeftBumper);
-		case UINavigationInput::Forward: return GetInputStateLastFrameDigital((DeviceInputID)XboxGamepadButton::RightBumper);
-		case UINavigationInput::PageUp: return GetStickAxisStateLastFrame(0, 0) < -0.1;
-		case UINavigationInput::PageDown: return GetStickAxisStateLastFrame(0, 0) > 0.1;
-		case UINavigationInput::PageLeft: return GetStickAxisStateLastFrame(0, 1) < -0.1;
-		case UINavigationInput::PageRight: return GetStickAxisStateLastFrame(0, 1) > 0.1;
-		case UINavigationInput::ScrollUp: return GetStickAxisStateLastFrame(1, 0) < -0.1;
-		case UINavigationInput::ScrollDown:	return GetStickAxisStateLastFrame(1, 0) > 0.1;
-		case UINavigationInput::ScrollLeft:	return GetStickAxisStateLastFrame(1, 1) < -0.1;
-		case UINavigationInput::ScrollRight: return GetStickAxisStateLastFrame(1, 1) > 0.1;
+		case UINavigationInput::Accept: return WasInputPressedLastFrame((DeviceInputID)XboxGamepadButton::A);
+		case UINavigationInput::Cancel: return WasInputPressedLastFrame((DeviceInputID)XboxGamepadButton::B);
+		case UINavigationInput::Menu: return WasInputPressedLastFrame((DeviceInputID)XboxGamepadButton::Start);
+		case UINavigationInput::View: return WasInputPressedLastFrame((DeviceInputID)XboxGamepadButton::Back);
+		case UINavigationInput::Left: return WasInputPressedLastFrame((DeviceInputID)XboxGamepadButton::Left);
+		case UINavigationInput::Right: return WasInputPressedLastFrame((DeviceInputID)XboxGamepadButton::Right);
+		case UINavigationInput::Up: return WasInputPressedLastFrame((DeviceInputID)XboxGamepadButton::Up);
+		case UINavigationInput::Down: return WasInputPressedLastFrame((DeviceInputID)XboxGamepadButton::Down);
+		case UINavigationInput::Back: return WasInputPressedLastFrame((DeviceInputID)XboxGamepadButton::LeftBumper);
+		case UINavigationInput::Forward: return WasInputPressedLastFrame((DeviceInputID)XboxGamepadButton::RightBumper);
+		case UINavigationInput::PageUp: return StickAxisValueLastFrame(0, 0) < -0.1;
+		case UINavigationInput::PageDown: return StickAxisValueLastFrame(0, 0) > 0.1;
+		case UINavigationInput::PageLeft: return StickAxisValueLastFrame(0, 1) < -0.1;
+		case UINavigationInput::PageRight: return StickAxisValueLastFrame(0, 1) > 0.1;
+		case UINavigationInput::ScrollUp: return StickAxisValueLastFrame(1, 0) < -0.1;
+		case UINavigationInput::ScrollDown:	return StickAxisValueLastFrame(1, 0) > 0.1;
+		case UINavigationInput::ScrollLeft:	return StickAxisValueLastFrame(1, 1) < -0.1;
+		case UINavigationInput::ScrollRight: return StickAxisValueLastFrame(1, 1) > 0.1;
 
 		case UINavigationInput::Home:
 		case UINavigationInput::End:
@@ -402,10 +402,10 @@ namespace gamelib
 
 	void IInputDevice::ReportInvalidInput(DeviceInputID input) const
 	{
-		ParentSystem.ErrorReporter.NewError("Input is not valid")
+		ParentSystem.ErrorReporter->NewError("Input is not valid")
 			.Value("Input", input)
-			.Value("Device", GetName())
-			.Value("ValidRange", GetMaxInput() - 1)
+			.Value("Device", Name())
+			.Value("ValidRange", MaxInputID() - 1)
 			.Perform();
 	}
 
