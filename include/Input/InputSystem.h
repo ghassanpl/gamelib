@@ -7,7 +7,6 @@
 
 #include "InputDevice.h"
 #include "../ErrorReporter.h"
-#include "../Support/IOC.h"
 
 union ALLEGRO_EVENT;
 
@@ -63,7 +62,7 @@ namespace gamelib
 		struct Input
 		{
 			InputID ActionID = InvalidInput;
-			PlayerID Player = {};
+			PlayerID Player = InvalidPlayerID;
 
 			Input() = default;
 			
@@ -192,7 +191,6 @@ namespace gamelib
 
 		struct PlayerInformation
 		{
-			PlayerID ID = {};
 			std::map<InputID, std::vector<Mapping>> Mappings;
 			std::vector<InputDeviceIndex> BoundDeviceIDs;
 		};
