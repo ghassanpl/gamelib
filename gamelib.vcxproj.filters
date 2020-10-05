@@ -46,6 +46,12 @@
     <Filter Include="Source Files\Serialization">
       <UniqueIdentifier>{731f41e2-648a-47a6-bc11-33a6d38dd65f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\ObjectManagement">
+      <UniqueIdentifier>{446cb634-87e5-4281-8485-1d87b5ba81ea}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Machine">
+      <UniqueIdentifier>{81af9860-4b5f-4fbe-bc34-4b04d4608f96}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\Includes\Allegro.h">
@@ -177,14 +183,26 @@
     <ClInclude Include="include\Debugger.h">
       <Filter>Source Files\Support</Filter>
     </ClInclude>
-    <ClInclude Include="include\Support\IOC.h">
-      <Filter>Source Files\Support</Filter>
-    </ClInclude>
     <ClInclude Include="include\Resources\Files.h">
       <Filter>Source Files\Resources</Filter>
     </ClInclude>
     <ClInclude Include="include\Resources\Files.impl.h">
       <Filter>Source Files\Resources</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Machine\IMachine.h">
+      <Filter>Source Files\Machine</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Machine\IPlayer.h">
+      <Filter>Source Files\Machine</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Machine\IIdentity.h">
+      <Filter>Source Files\Machine</Filter>
+    </ClInclude>
+    <ClInclude Include="Signals.h">
+      <Filter>Source Files\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Machine\IHardwareDevice.h">
+      <Filter>Source Files\Machine</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -223,6 +241,9 @@
     </ClCompile>
     <ClCompile Include="src\Debug\Debugger.cpp">
       <Filter>Source Files\Support</Filter>
+    </ClCompile>
+    <ClCompile Include="include\Machine\IPlayer.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

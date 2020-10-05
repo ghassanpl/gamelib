@@ -141,6 +141,12 @@ namespace gamelib
 		return first + (second - first) * Interpolate(function, t);
 	}
 
+	template <InterpolationFunction FUNCTION, typename T, typename DT>
+	constexpr inline T InterpolateBetween(const T& first, const T& second, DT t)
+	{
+		return first + (second - first) * Interpolate<FUNCTION>(t);
+	}
+
 	///************************************************************************/
 	/// Displayable
 	/// Interpolates a value between it's current value and the displayed one,

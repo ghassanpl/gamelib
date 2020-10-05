@@ -8,7 +8,7 @@
 
 namespace gamelib
 {
-	using namespace string_ops;
+	using namespace ghassanpl;
 
 	void Page::SetImageResolver(std::function<ALLEGRO_BITMAP* (std::string_view)> resolver)
 	{
@@ -34,19 +34,19 @@ namespace gamelib
 		current_paragraph = &mParagraphs.emplace_back(index);
 		style_stack.push_back(mDefaultStyle);
 
-		char32_t prev_cp = 0, cp = consume_utf8(str);
+		char32_t prev_cp = 0, cp = string_ops::consume_utf8(str);
 		auto beg = str.data();
 		while (cp)
 		{
 			if (cp == '<') /// Parse tag
 			{
-				auto tag_name = consume_while(str, string_ops::isalnum);
+				auto tag_name = string_ops::consume_while(str, string_ops::isalnum);
 				if (tag_name.empty())
 				{
 					SetText(fmt::format("#Error at character {}: tag name is empty#", str.data() - beg));
 					return;
 				}
-				trim_whitespace_left(str);
+				str = string_ops::trimmed_whitespace_left(str);
 
 				if (tag_name == "p")
 				{
@@ -154,15 +154,15 @@ namespace gamelib
 					return;
 				}
 
-				trim_whitespace_left(str);
-				if (!consume(str, '>'))
+				str = string_ops::trimmed_whitespace_left(str);
+				if (!string_ops::consume(str, '>'))
 				{
 					SetText(fmt::format("#Error at character {}: expected '>'#", str.data() - beg));
 					return;
 				}
 
 				prev_cp = 0;
-				cp = consume_utf8(str);
+				cp = string_ops::consume_utf8(str);
 				continue;
 			}
 
@@ -177,7 +177,7 @@ namespace gamelib
 
 			index++;
 			prev_cp = cp;
-			cp = consume_utf8(str);
+			cp = string_ops::consume_utf8(str);
 		}
 
 		current_paragraph->EndGlyph = index;
@@ -236,7 +236,7 @@ namespace gamelib
 		float line_height = 0;
 		auto current_line = &Lines.emplace_back();
 		current_line->Glyphs = glyphs;
-		for (intptr_t i=0;i<glyphs.size(); i++)
+		for (size_t i=0;i<glyphs.size(); i++)
 		{
 			auto& glyph = glyphs[i];
 			if (glyph.Codepoint == '\n' || pos.x + glyph.Glyph.advance >= max_width)

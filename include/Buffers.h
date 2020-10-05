@@ -5,9 +5,36 @@
 
 namespace gamelib
 {
+	template <typename ELEMENT_TYPE>
+	struct base_buffer_traits
+	{
+		using element_type = char;
+	};
+
+	template <typename BUFFER>
+	struct output_buffer_traits : base_buffer_traits<char>
+	{
+		static constexpr bool can_reserve = false;
+	};
+
 	/// ////////////////////////////////////////////////////////////// ///
 	/// Output buffer concept
 	/// ////////////////////////////////////////////////////////////// ///
+
+	template <typename T>
+	concept simple_range = requires (T range) {
+		cbegin(range);
+		cend(range);
+	} || requires (T range) {
+		std::cbegin(range);
+		std::cend(range);
+	};
+
+	template <typename BUFFER, typename T>
+	bool buffer_append(BUFFER&& buffer, T&& val)
+	{
+		static_assert(false, "buffer_append needs to be specialized for the BUFFER type");
+	}
 
 	template <typename BUFFER>
 	bool buffer_reserve(BUFFER& /*buffer*/, long long int /*additional*/)
@@ -16,13 +43,34 @@ namespace gamelib
 	}
 
 	template <typename BUFFER, typename IT>
-	size_t buffer_append_range(BUFFER& buffer, IT begin, IT end)
+	size_t buffer_append_range(BUFFER& buffer, IT&& begin, IT&& end)
 	{
 		const auto begin_start = begin;
 		buffer_reserve(buffer, end - begin);
 		while (begin < end)
 			if (!buffer_append(buffer, *begin)) break; else ++begin;
 		return std::distance(begin_start, begin);
+	}
+
+	template <typename RANGE>
+	concept sizeable = requires (RANGE range) {
+		size(range);
+	} || requires (RANGE range) {
+		std::size(range);
+	};
+
+	template <typename BUFFER, simple_range RANGE>
+	size_t buffer_append_range(BUFFER& buffer, RANGE&& range)
+	{
+		using std::size;
+		if constexpr (sizeable<RANGE>)
+			buffer_reserve(buffer, size(range));
+		
+		size_t result = 0;
+		for (auto&& el : range)
+			if (!buffer_append(buffer, el)) break; else result++;
+
+		return result;
 	}
 
 	template <typename BUFFER, typename CHAR_TYPE>
@@ -49,17 +97,13 @@ namespace gamelib
 		return buffer_append_range(buffer, cstr, cstr + std::min(max_len, N - 1));
 	}
 
-	template <typename T, typename _ = void>
-	struct is_range : std::false_type {};
-
-	template <typename T>
-	struct is_range<T, std::conditional_t<false, std::void_t<decltype(std::cbegin(std::declval<T>())), decltype(std::cend(std::declval<T>()))>, void>> : std::true_type {};
-	
 	template <typename BUFFER, typename T>
 	size_t buffer_string_append(BUFFER& buffer, T&& val)
 	{
-		if constexpr (is_range<T>::value)
-			return buffer_append_range(buffer, std::begin(val), std::end(val));
+		using std::cbegin;
+		using std::cend;
+		if constexpr (simple_range<T>)
+			return buffer_append_range(buffer, cbegin(val), cend(val));
 		else if constexpr (std::is_pointer_v<T>)
 			return buffer_append_range(buffer, val, val + std::char_traits<decltype(*val)>::length(val));
 		else if constexpr (std::is_array_v<T>)
@@ -99,40 +143,48 @@ namespace gamelib
 	/// Input buffer concept
 	/// ////////////////////////////////////////////////////////////// ///
 
-	/// template <typename BUFFER>
-	/// auto buffer_get_iterator(BUFFER& buffer, intptr_t at_element);
-	/// template <typename BUFFER, typename T>
-	/// bool buffer_read_to(BUFFER& buffer, T& val);
+	template <typename BUFFER>
+	struct input_buffer_traits : base_buffer_traits<char>
+	{
+		static constexpr bool is_random_access = false;
+	};
 
 	template <typename BUFFER>
-	constexpr bool buffer_is_random_access()
+	auto buffer_get_iterator(BUFFER&& buffer, intptr_t at_element)
 	{
-		return false;
+		static_assert(false, "buffer_get_iterator needs to be specialized for the BUFFER type");
+		return nullptr;
+	}
+	
+	template <typename BUFFER, typename T>
+	bool buffer_read_to(BUFFER&& buffer, T& val)
+	{
+		static_assert(false, "buffer_read_to needs to be specialized for the BUFFER type");
 	}
 
 	template <typename T, typename BUFFER>
-	T buffer_read(BUFFER& buffer)
+	T buffer_read(BUFFER&& buffer)
 	{
 		T result;
-		buffer_read_to(buffer, result);
+		buffer_read_to(std::forward<BUFFER>(buffer), result);
 		return result;
 	}
 
 	template <typename BUFFER>
-	size_t buffer_available_data(BUFFER& buffer)
+	size_t buffer_available_data(BUFFER&& buffer)
 	{
 		return 1;
 	}
 
 	template <typename INPUT_BUFFER, typename OUTPUT_BUFFER, typename ELEMENT_TYPE>
-	size_t buffer_copy(INPUT_BUFFER& input, OUTPUT_BUFFER& output, size_t try_elements)
+	size_t buffer_copy(INPUT_BUFFER&& input, OUTPUT_BUFFER&& output, size_t try_elements)
 	{
 		/// TODO: If input buffer supports buffering, do this in batches, or make a buffer_copy_buffered function
-		if constexpr (buffer_is_random_access<INPUT_BUFFER>())
+		if constexpr (input_buffer_traits<INPUT_BUFFER>::is_random_access)
 		{
 			auto start = buffer_get_iterator(input, 0);
 			auto end = buffer_get_iterator(input, (intptr_t)try_elements);
-			return buffer_append_range(output, start, end);
+			return buffer_append_range(std::forward<OUTPUT_BUFFER>(output), start, end);
 		}
 		else
 		{
@@ -149,11 +201,36 @@ namespace gamelib
 		}
 	}
 
-	template <typename INPUT_BUFFER, typename OUTPUT_IT>
-	size_t buffer_read_range(INPUT_BUFFER& input, OUTPUT_IT first, OUTPUT_IT last)
+	template <typename INPUT_BUFFER, typename OUTPUT_BUFFER>
+	size_t buffer_copy(INPUT_BUFFER&& input, OUTPUT_BUFFER&& output)
 	{
 		/// TODO: If input buffer supports buffering, do this in batches, or make a buffer_copy_buffered function
-		if constexpr (buffer_is_random_access<INPUT_BUFFER>())
+		if constexpr (input_buffer_traits<INPUT_BUFFER>::is_random_access)
+		{
+			auto start = buffer_get_iterator(input, 0);
+			auto end = buffer_get_iterator(input, std::numeric_limits<intptr_t>::max());
+			return buffer_append_range(std::forward<OUTPUT_BUFFER>(output), start, end);
+		}
+		else
+		{
+			size_t result = 0;
+			while (true)
+			{
+				if (buffer_available_data(input) == 0)
+					break;
+				if (!buffer_append(output, buffer_read<input_buffer_traits<INPUT_BUFFER>::element_type>(input)))
+					break;
+				result++;
+			}
+			return result;
+		}
+	}
+
+	template <typename INPUT_BUFFER, typename OUTPUT_IT>
+	size_t buffer_read_range(INPUT_BUFFER&& input, OUTPUT_IT first, OUTPUT_IT last)
+	{
+		/// TODO: If input buffer supports buffering, do this in batches, or make a buffer_copy_buffered function
+		if constexpr (input_buffer_traits<INPUT_BUFFER>::is_random_access)
 		{
 			auto start = buffer_get_iterator(input, 0);
 			auto end = buffer_get_iterator(input, std::distance(first, last));
@@ -172,45 +249,73 @@ namespace gamelib
 		}
 	}
 
+	template <typename INPUT_BUFFER, typename OUTPUT_IT, typename SENTINEL>
+	size_t buffer_read_until(INPUT_BUFFER&& input, OUTPUT_IT output, SENTINEL sentinel)
+	{
+		size_t result = 0;
+		while (true)
+		{
+			if (buffer_available_data(input) == 0)
+				break;
+
+			typename input_buffer_traits<INPUT_BUFFER>::element_type element = {};
+			if (!buffer_read_to(input, element))
+				break;
+
+			result++;
+
+			if (element == sentinel)
+				break;
+
+			*output++ = element;
+		}
+		return result;
+	}
+
 	template <typename BUFFER, typename CHAR_TYPE>
-	size_t buffer_read_cstring_ptr(BUFFER& buffer, CHAR_TYPE* cstr, size_t max_len)
+	size_t buffer_read_cstring_ptr(BUFFER&& buffer, CHAR_TYPE* cstr, size_t max_len)
 	{
-		return buffer_read_range(buffer, cstr, cstr + max_len);
+		return buffer_read_range(std::forward<BUFFER>(buffer), cstr, cstr + max_len);
 	}
 
 	template <typename BUFFER, size_t N, typename CHAR_TYPE>
-	size_t buffer_read_cstring(BUFFER& buffer, CHAR_TYPE(&cstr)[N])
+	size_t buffer_read_cstring(BUFFER&& buffer, CHAR_TYPE(&cstr)[N])
 	{
-		return buffer_read_range(buffer, cstr, cstr + (N - 1));
+		return buffer_read_range(std::forward<BUFFER>(buffer), cstr, cstr + (N - 1));
 	}
 
 	template <typename BUFFER, size_t N, typename CHAR_TYPE>
-	size_t buffer_append_cstring(BUFFER& buffer, CHAR_TYPE(&cstr)[N], size_t max_len)
+	size_t buffer_read_cstring(BUFFER&& buffer, CHAR_TYPE(&cstr)[N], size_t max_len)
 	{
-		return buffer_read_range(buffer, cstr, cstr + std::min(max_len, N - 1));
+		return buffer_read_range(std::forward<BUFFER>(buffer), cstr, cstr + std::min(max_len, N - 1));
 	}
-
-	template <typename T, typename _ = void>
-	struct is_mutable_range : std::false_type {};
 
 	template <typename T>
-	struct is_mutable_range<T, std::conditional_t<false, std::void_t<decltype(std::begin(std::declval<T>())), decltype(std::end(std::declval<T>()))>, void>> : std::true_type {};
+	concept simple_mutable_range = requires (T range) {
+		begin(range);
+		end(range);
+	} || requires (T range) {
+		std::begin(range);
+		std::end(range);
+	};
 
 	template <typename BUFFER, typename T>
-	size_t buffer_string_read(BUFFER& buffer, T& val)
+	size_t buffer_string_read(BUFFER&& buffer, T& val)
 	{
-		if constexpr (is_mutable_range<T>::value)
-			return buffer_read_range(buffer, std::begin(val), std::end(val));
+		using std::begin;
+		using std::end;
+		if constexpr (simple_mutable_range<T>)
+			return buffer_read_range(std::forward<BUFFER>(buffer), begin(val), end(val));
 		else if constexpr (std::is_pointer_v<T>)
-			return buffer_read_range(buffer, val, val + std::char_traits<decltype(*val)>::length(val));
+			return buffer_read_range(std::forward<BUFFER>(buffer), val, val + std::char_traits<decltype(*val)>::length(val));
 		else if constexpr (std::is_array_v<T>)
-			return buffer_read_cstring(buffer, std::forward<T>(val));
+			return buffer_read_cstring(std::forward<BUFFER>(buffer), std::forward<T>(val));
 		else
-			return buffer_read(buffer, std::forward<T>(val));
+			return buffer_read(std::forward<BUFFER>(buffer), std::forward<T>(val));
 	}
 
 	template <typename BUFFER>
-	char32_t buffer_read_utf8(BUFFER& buffer)
+	char32_t buffer_read_utf8(BUFFER&& buffer)
 	{
 
 	}

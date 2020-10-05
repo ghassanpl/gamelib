@@ -111,6 +111,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -145,6 +146,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -178,6 +180,10 @@
     <ClInclude Include="include\Input\AllegroInput.h" />
     <ClInclude Include="include\Input\InputDevice.h" />
     <ClInclude Include="include\Input\InputSystem.h" />
+    <ClInclude Include="include\Machine\IHardwareDevice.h" />
+    <ClInclude Include="include\Machine\IIdentity.h" />
+    <ClInclude Include="include\Machine\IMachine.h" />
+    <ClInclude Include="include\Machine\IPlayer.h" />
     <ClInclude Include="include\Navigation\Grid.h" />
     <ClInclude Include="include\Navigation\Grid.impl.h" />
     <ClInclude Include="include\Navigation\Maze.h" />
@@ -191,7 +197,6 @@
     <ClInclude Include="include\Serialization\IArchiver.h" />
     <ClInclude Include="include\Serialization\IOStreamBuffers.h" />
     <ClInclude Include="include\Serialization\StringBuffers.h" />
-    <ClInclude Include="include\Support\IOC.h" />
     <ClInclude Include="include\Text\TextField.h" />
     <ClInclude Include="include\Timing.h" />
     <ClInclude Include="include\Timing.impl.h" />
@@ -200,12 +205,14 @@
     <ClInclude Include="IResource.h" />
     <ClInclude Include="lib\imgui-allegro\imgui-Allegro.h" />
     <ClInclude Include="lib\imgui-allegro\imgui_impl_allegro5.h" />
+    <ClInclude Include="Signals.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="include\Camera.cpp" />
     <ClCompile Include="include\Input\AllegroInput.cpp" />
     <ClCompile Include="include\Input\InputDevice.cpp" />
     <ClCompile Include="include\Input\InputSystem.cpp" />
+    <ClCompile Include="include\Machine\IPlayer.cpp" />
     <ClCompile Include="include\Navigation\Navigation.cpp" />
     <ClCompile Include="include\Text\TextField.cpp" />
     <ClCompile Include="include\Transformable.cpp" />

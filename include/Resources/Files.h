@@ -25,8 +25,6 @@ namespace gamelib
 
 	struct IFile
 	{
-		IFile(std::shared_ptr<IErrorReporter> rep);
-
 		enum class RelativeSeek
 		{
 			Set,
@@ -42,12 +40,12 @@ namespace gamelib
 		virtual auto Write(std::span<byte const> buffer) -> size_t = 0;
 		virtual auto Write(std::string_view str) -> size_t;
 
-		template <typename T> 
-		requires std::is_integral_v<T>
+		template <std::integral T> 
+		//requires std::is_integral_v<T>
 		auto TryRead(T& buffer, std::endian source_endianness) -> bool;
 
-		template <std::endian ENDIANNESS, typename T>
-		requires std::is_integral_v<T>
+		template <std::endian ENDIANNESS, std::integral T>
+		//requires std::is_integral_v<T>
 		auto TryRead(T& buffer) -> bool;
 
 		virtual void Flush() = 0;
@@ -72,11 +70,23 @@ namespace gamelib
 		/// TODO: Buffering?
 	};
 
+	enum class FileSystemEntryAvailability
+	{
+		Full,
+		Offline,
+		NoData,
+		SomeData,
+	};
+
 	struct IFileSystemEntry : std::enable_shared_from_this<IFileSystemEntry>
 	{
-		IFileSystemEntry(std::shared_ptr<IErrorReporter> rep);
-
 		virtual ~IFileSystemEntry() = default;
+
+		enum class EntryType
+		{
+			File,
+			Directory,
+		};
 
 		enum class Property
 		{
@@ -84,8 +94,6 @@ namespace gamelib
 			Writeable,
 			Executable,
 			Hidden,
-			File,
-			Directory,
 			Compressed,
 			Encrypted
 		};
@@ -95,9 +103,10 @@ namespace gamelib
 		/// Properties
 		virtual bool Exists() = 0;
 		virtual auto Path() const -> file_path = 0;
+		virtual auto Type() const-> EntryType = 0;
 		virtual auto Properties() const-> enum_flags<Property> = 0;
-		virtual bool IsDirectory() const { return Properties().is_set(Property::Directory); }
-		virtual bool IsFile() const { return Properties().is_set(Property::File); }
+		virtual bool IsDirectory() const { return Type() == EntryType::Directory; }
+		virtual bool IsFile() const { return Type() == EntryType::File; }
 		virtual bool IsHidden() const { return Properties().is_set(Property::Hidden); }
 		virtual bool IsExecutable() const { return Properties().is_set(Property::Executable); }
 		virtual bool IsWriteable() const { return Properties().is_set(Property::Writeable); }
@@ -107,23 +116,32 @@ namespace gamelib
 		virtual auto LastAccessTime() const -> FileTime = 0;
 		virtual auto CreationTime() const -> FileTime = 0;
 		virtual auto LastModificationTime() const -> FileTime = 0;
-		virtual auto Size() const -> size_t = 0;
+		virtual auto DataSize() const -> size_t = 0;
+		virtual auto PhysicalSize() const -> size_t = 0;
 		virtual void Refresh() {}
+		virtual auto Availability() -> FileSystemEntryAvailability { return FileSystemEntryAvailability::Full; }
 
-		/// TODO: owner, group, permissions
+		virtual auto Links() -> std::vector<file_path> = 0;
+
+		/// TODO: owner, group, permissions (using identities)
 
 		/// Actions
+		virtual void SetProperty(Property prop, bool to_value) = 0;
+		virtual void SetAllProperties(enum_flags<Property> properties) = 0;
+
 		virtual bool Remove() = 0;
 		virtual bool SoftLinkTo(file_path const& destination) = 0; /// Junctions/CreateSymbolicLinkA 
 		virtual bool HardLinkTo(file_path const& destination) = 0; /// CreateHardLinkA
 
+		virtual bool CopyTo(file_path const& destination) = 0; /// TODO: Flags (CopySymlink, FailIfExists, Resumable); Callback progress
+		virtual bool MoveTo(file_path const& destination) = 0; /// TODO: Flags (CopyAllowed, FailIfExists, EnsureFlush); Callback progress
+
+		/// TODO: Compress/Decompressed
 		/// TODO: Encrypt/Decrypt
 	};
 
 	struct IFileSystemEntry_Directory : IFileSystemEntry
 	{
-		IFileSystemEntry_Directory(std::shared_ptr<IErrorReporter> rep);
-
 		virtual auto ChildEntry(std::string_view with_name) -> std::shared_ptr<IFileSystemEntry> = 0;
 
 		/// Directory Iteration
@@ -138,15 +156,14 @@ namespace gamelib
 		template <typename CALLBACK>
 		requires invocable_with_result<CALLBACK, IterationResult, std::shared_ptr<IFileSystemEntry>>
 		bool ForEachEntry(CALLBACK&& predicate);
+
+		/// TODO: Wathing directories for changes (ReadDirectoryChangesEx, FindFirstChangeNotification)
 	};
 
 	struct IFileSystemEntry_File : IFileSystemEntry
 	{
-		IFileSystemEntry_File(std::shared_ptr<IErrorReporter> rep);
-
 		virtual auto OpenFile(const char* mode) -> std::unique_ptr<IFile> = 0;
 		virtual bool ReplaceWith(std::shared_ptr<IFileSystemEntry> other) = 0;
-		virtual bool CopyTo(file_path const& destination) = 0; /// TODO: Flags (CopySymlink, FailIfExists, Resumable); Callback progress
 	};
 
 	enum class FileSystemFlags
@@ -157,16 +174,15 @@ namespace gamelib
 		Compressed,
 		SupportsOwnerships,
 		CaseSensitive,
+		RespectsComplexPermissions, /// FILE_PERSISTENT_ACLS on Windows, ??? on Linux
 	};
 
 	struct IFileSystem : std::enable_shared_from_this<IFileSystem>
 	{
-		IFileSystem(std::shared_ptr<IErrorReporter> rep);
-
 		virtual ~IFileSystem() = default;
-
+		
 		virtual auto Resolve(file_path const& path) -> std::shared_ptr<IFileSystemEntry> = 0;
-		virtual auto Root()->std::shared_ptr<IFileSystemEntry>;
+		virtual auto Root() -> std::shared_ptr<IFileSystemEntry_Directory>;
 
 		virtual bool Exists(file_path const& path);
 		virtual bool Remove(file_path const& path);
@@ -183,32 +199,19 @@ namespace gamelib
 			size_t FreeSize;
 		};
 
+		/// TODO: permissions (using identities)
+
 		/// GetVolumeInformationW, GetDiskFreeSpaceExW, GetDriveTypeW 
 		virtual std::string Name() = 0;
 		virtual std::string Type() = 0;
 		virtual Sizes Sizes() = 0;
 		virtual enum_flags<FileSystemFlags> Flags() = 0;
-
-		enum class SpecialPath
-		{
-			Resources,
-			Temporary,
-			Home,
-			Documents,
-			UserData,
-			Settings,
-			Executable
-		};
-
-		virtual auto GetSpecialPath(SpecialPath path, const char* app_name = nullptr, const char* org_name = nullptr) -> file_path = 0; /// al_get_standard_path
 	};
 
 	using virtual_file_path = file_path;
 
 	struct IVirtualFileSystem : IFileSystem
 	{
-		IVirtualFileSystem(std::shared_ptr<IErrorReporter> rep);
-
 		virtual auto MountPoints() const -> std::vector<std::pair<virtual_file_path, file_path>> = 0;
 		virtual void ForEachMountPoint(std::function<bool(virtual_file_path const&, file_path const&)> callback) = 0;
 
@@ -228,8 +231,6 @@ namespace gamelib
 	protected:
 
 	};
-
-	/// TODO: List available filesystems
 }
 
 #define GAMELIB_IMPL

@@ -3,6 +3,7 @@
 #include "../Common.h"
 #include "../Includes/EnumFlags.h"
 #include "../Includes/GLM.h"
+#include "../Machine/IPlayer.h"
 #include <vector>
 #include <string>
 
@@ -12,8 +13,6 @@ namespace gamelib
 	static constexpr inline DeviceInputID InvalidDeviceInputID = std::numeric_limits<DeviceInputID>::max();
 	using DeviceOutputID = uint32_t;
 	static constexpr inline DeviceOutputID InvalidDeviceOutputID = std::numeric_limits<DeviceOutputID>::max();
-
-	using PlayerID = uintptr_t;
 
 	struct IInputSystem;
 
@@ -217,6 +216,7 @@ namespace gamelib
 			ImageURL,
 			Website,
 			SerialNumber,
+			VendorProductVersionID,
 		};
 
 		virtual bool IsStringPropertyValid(StringProperty property) const = 0;
@@ -230,6 +230,7 @@ namespace gamelib
 			Charge, /// float, 0 - 1
 			PowerDraw, /// float, in amperes
 			InternalTemperature, /// float, in C
+			HIDUsage, /// vec3, first is usage page, second is usage id
 		};
 
 		virtual bool IsNumberPropertyValid(NumberProperty property) const = 0;
@@ -251,7 +252,7 @@ namespace gamelib
 	private:
 
 		seconds_t mLastActiveTime = {};
-		PlayerID mAssociatedPlayer = {};
+		PlayerID mAssociatedPlayer = InvalidPlayerID;
 
 	};
 

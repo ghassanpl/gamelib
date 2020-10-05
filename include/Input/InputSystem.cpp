@@ -90,7 +90,7 @@ namespace gamelib
 		if (!player)
 		{
 			ErrorReporter->NewWarning("Player not found for input")
-				.Value("PlayerID", of_input.Player)
+				.Value("PlayerID", of_input.Player.Value)
 				.Value("ActionID", of_input.ActionID)
 				.Perform();
 			return {};
@@ -115,7 +115,7 @@ namespace gamelib
 		if (!player)
 		{
 			ErrorReporter->NewWarning("Player not found for input")
-				.Value("PlayerID", of_input.Player)
+				.Value("PlayerID", of_input.Player.Value)
 				.Value("ActionID", of_input.ActionID)
 				.Perform();
 			return {};

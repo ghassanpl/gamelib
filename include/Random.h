@@ -7,6 +7,8 @@
 
 namespace gamelib::random
 {
+	/// TODO: Tests
+
 	template <typename RANDOM>
 	uint64_t Integer(RANDOM& rng)
 	{
@@ -29,11 +31,33 @@ namespace gamelib::random
 		return dist(rng);
 	}
 
+	template <typename RANDOM, uint64_t N_SIDED>
+	requires (N_SIDED >= 2)
+	uint64_t Dice(RANDOM& rng)
+	{
+		static const inline std::uniform_int_distribution<uint64_t> dist{ 0, N_SIDED - 1 };
+		return dist(rng);
+	}
+
+	namespace
+	{
+		inline static std::default_random_engine DefaultRandomEngine;
+	}
+
+	inline int operator""_d2(unsigned long long int) { return (int)Dice(DefaultRandomEngine, 2); }
+	inline int operator""_d4(unsigned long long int) { return (int)Dice(DefaultRandomEngine, 4); }
+	inline int operator""_d6(unsigned long long int) { return (int)Dice(DefaultRandomEngine, 6); }
+	inline int operator""_d8(unsigned long long int) { return (int)Dice(DefaultRandomEngine, 8); }
+	inline int operator""_d10(unsigned long long int) { return (int)Dice(DefaultRandomEngine, 10); }
+	inline int operator""_d12(unsigned long long int) { return (int)Dice(DefaultRandomEngine, 12); }
+	inline int operator""_d20(unsigned long long int) { return (int)Dice(DefaultRandomEngine, 20); }
+	inline int operator""_d100(unsigned long long int) { return (int)Dice(DefaultRandomEngine, 100); }
+
 	template <typename RANDOM, typename T>
 	requires is_any_of_v<T, short, int, long, long long, unsigned short, unsigned int, unsigned long, unsigned long long>
 	T IntegerRange(RANDOM& rng, T from, T to)
 	{
-		if (from >= to) return 0;
+		if (from >= to) return T{};
 		std::uniform_int_distribution<T> dist{ from, to };
 		return dist(rng);
 	}
@@ -42,9 +66,29 @@ namespace gamelib::random
 	requires std::is_floating_point_v<T>
 	T RealRange(RANDOM& rng, T from, T to)
 	{
-		if (from >= to) return T{ 0 };
+		if (from >= to) return T{};
 		std::uniform_real_distribution<T> dist{ from, to };
 		return dist(rng);
+	}
+
+	template <typename RANDOM, typename T>
+	T Range(RANDOM& rng, T from, T to)
+	{
+		if (from >= to) return T{};
+
+		if constexpr (std::is_enum_v<T>)
+		{
+			std::uniform_int_distribution<std::underlying_type_t<T>> dist(from, to);
+			return (T)dist(rng);
+		}
+		else if constexpr (std::is_floating_point_v<T>)
+			return RealRange(rng, from, to);
+		else if constexpr (is_any_of_v<T, short, int, long, long long, unsigned short, unsigned int, unsigned long, unsigned long long>)
+			return IntegerRange(rng, from, to);
+		else
+		{
+			static_assert(false, "Range only works on arithmetic types (non-char-ones) and enums");
+		}
 	}
 
 	template <typename RANDOM>
@@ -129,12 +173,24 @@ namespace gamelib::random
 	template <typename RANDOM, typename T>
 	void Shuffle(RANDOM& rng, T& cont)
 	{
-		std::shuffle(std::begin(cont), std::end(cont), rng);
+		using std::begin;
+		using std::end;
+		std::shuffle(begin(cont), end(cont), rng);
 	}
 
 	template <typename RANDOM, typename T>
 	auto Iterator(RANDOM& rng, T& cont)
 	{
-		return std::begin(cont) + IntegerRange(rng, 0, (int64_t)std::size(cont) - 1);
+		using std::size;
+		using std::begin;
+		return begin(cont) + IntegerRange(rng, 0, (int64_t)size(cont) - 1);
+	}
+
+	template <typename RANDOM, typename T>
+	auto* Element(RANDOM& rng, T& cont)
+	{
+		using std::end;
+		auto result = Iterator(rng, cont);
+		return (result != end(cont)) ? std::to_address(result) : nullptr;
 	}
 }

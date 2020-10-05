@@ -22,7 +22,6 @@
 #include <Colors.h>
 #include <Debugger.h>
 #include <ErrorReporter.h>
-#include <Support/IOC.h>
 #include <Random.h>
 #include <Timing.h>
 #include <Navigation/Squares.h>

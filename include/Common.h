@@ -8,6 +8,7 @@
 using std::byte;
 using seconds_t = double;
 using herz_t = double;
+using progress_t = double; /// 0.0 - 1.0
 
 ///************************************************************************/
 /// Annotations

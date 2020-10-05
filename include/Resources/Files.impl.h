@@ -7,9 +7,9 @@
 namespace gamelib
 {
 	
-	inline auto IFileSystem::Root() -> std::shared_ptr<IFileSystemEntry>
+	inline auto IFileSystem::Root() -> std::shared_ptr<IFileSystemEntry_Directory>
 	{
-		return Resolve("/");
+		return std::dynamic_pointer_cast<IFileSystemEntry_Directory>(Resolve("/"));
 	}
 	
 	inline bool IFileSystem::Exists(file_path const& path)

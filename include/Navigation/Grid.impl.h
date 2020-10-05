@@ -375,7 +375,7 @@ namespace gamelib::squares
 	template<typename TILE_DATA>
 	void Grid<TILE_DATA>::ResizeY(int new_y, const TILE_DATA& new_element)
 	{
-		if (new_y == 0) throw std::invalid_argument("new_y");
+		if (new_y <= 0) throw std::invalid_argument("new_y");
 
 		const auto new_count = new_y * mWidth;
 		mTiles.resize(new_count, new_element);
@@ -402,7 +402,7 @@ namespace gamelib::squares
 		}
 		mTiles = std::move(new_vector);
 		*/
-		if (new_x == 0) throw std::invalid_argument("new_x");
+		if (new_x <= 0) throw std::invalid_argument("new_x");
 
 		const auto new_count = new_x * mHeight;
 

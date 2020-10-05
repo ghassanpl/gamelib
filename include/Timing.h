@@ -78,6 +78,58 @@ namespace gamelib
 		/// See: TimeSinceFlag
 		auto FlagElapsedRestart(std::string_view name, seconds_t elapsed_time, bool use_frame_start_time = true) -> bool;
 
+		///# TODO: Timers #///
+
+		struct Timer;
+
+		using TimerCallback = std::function<void(Timer*)>;
+
+		struct Timer
+		{
+			auto Elapsed() -> seconds_t;
+			auto EndTime() -> seconds_t;
+			auto Percent() -> double;
+			auto Executions() -> size_t;
+			auto MaxExecutions()->size_t;
+
+			/// TODO: Pause(), Unpause()
+
+		private:
+
+			size_t mExecutions = 0;
+			size_t mMaxExecutions = 0;
+			TimerCallback mCallback;
+			TimerCallback mEndCallback;
+			uint8_t mFlags = {}; /// RestartAfterTrigger, TriggerEndCallback, TriggerRunCallback, Paused, Canceled
+		};
+
+		auto After(seconds_t duration, TimerCallback func) -> std::shared_ptr<Timer>;
+
+		auto When(seconds_t time_point, TimerCallback func) -> std::shared_ptr<Timer>;
+		
+		auto Every(seconds_t duration, TimerCallback func) -> std::shared_ptr<Timer>;
+		
+		auto Every(seconds_t duration, TimerCallback func, size_t count) -> std::shared_ptr<Timer>;
+
+		auto During(seconds_t duration, TimerCallback func, TimerCallback at_end = {}) -> std::shared_ptr<Timer>;
+
+		auto Until(seconds_t time_point, TimerCallback func, TimerCallback at_end = {}) -> std::shared_ptr<Timer>;
+
+		template <typename T>
+		auto Interpolate(seconds_t duration, T& value, T from, T to, TimerCallback at_end = {}) -> std::shared_ptr<Timer>
+		{
+			return During(duration, [&value, from, to](Timer* timer) { using std::lerp; value = lerp(from, to, timer->Percent()); }, std::move(at_end));
+		}
+
+		/// See Animations.h for some provided interpolation function templates
+		template <typename T, typename INTERPOLATOR>
+		auto InterpolateUsing(seconds_t duration, T& value, T from, T to, INTERPOLATOR&& interpolator, TimerCallback at_end = {}) -> std::shared_ptr<Timer>
+		{
+			return During(duration, [&value, from, to, interpolator = std::forward<INTERPOLATOR>(interpolator)](Timer* timer) { 
+				value = interpolator(from, to, timer->Percent());
+			}, std::move(at_end));
+		}
+
 		///# Misc #///
 
 		/// Returns the number of "frames" per second calculated based on the last few frame timings
