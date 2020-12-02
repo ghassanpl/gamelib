@@ -16,8 +16,38 @@ using glm::ivec2;
 using glm::uvec2;
 using Color = glm::vec4;
 
-namespace glm
+namespace gamelib
 {
+
+	/// Shamelessly stolen from: https://www.embeddeduse.com/2019/08/26/qt-compare-two-floats/
+	template <std::floating_point T>
+	inline constexpr bool epsilonEqual(T a, T b, T epsilon)
+	{
+		const auto absA = std::abs(a);
+		const auto absB = std::abs(b);
+		const auto diff = std::abs(a - b);
+
+		return (diff <= epsilon) ? true : (diff <= (epsilon * std::max(absA, absB)));
+	}
+
+	enum class point_relationship
+	{
+		outside,
+		on_edge,
+		inside,
+	};
+
+	inline std::ostream& operator<<(std::ostream& strm, point_relationship rel)
+	{
+		switch (rel)
+		{
+		case point_relationship::outside: strm << "outside"; return strm;
+		case point_relationship::on_edge: strm << "on_edge"; return strm;
+		case point_relationship::inside: strm << "inside"; return strm;
+		}
+		strm << "(invalid value for point_relationship: " << int(rel) << ")";
+		return strm;
+	}
 
 	template <typename T>
 	struct trec2
@@ -26,6 +56,7 @@ namespace glm
 		glm::tvec2<T> p2 = { 0,0 };
 
 		using tvec = glm::tvec2<T>;
+		using value_type = T;
 
 		trec2() noexcept = default;
 		trec2(tvec a, tvec b) noexcept : p1(a), p2(b) { }
@@ -47,6 +78,7 @@ namespace glm
 		trec2 operator-(tvec op) const noexcept { return { p1 - op, p2 - op }; }
 		trec2& operator-=(tvec op) noexcept { p1 -= op; p2 -= op; return *this; };
 		trec2 operator*(T op) const noexcept { return { p1 * op, p2 * op }; }
+		trec2 operator/(T op) const noexcept { return { p1 / op, p2 / op }; }
 
 		tvec size() const noexcept { return p2 - p1; }
 		tvec position() const noexcept { return p1; }
@@ -95,12 +127,18 @@ namespace glm
 		{
 			return (left() <= other.right() && other.left() <= right() && top() <= other.bottom() && other.top() <= bottom());
 		}
+
 		bool contains(glm::vec<2, T> const& other) const noexcept
 		{
 			return other.x >= p1.x && other.y >= p1.y && other.x < p2.x && other.y < p2.y;
 		}
 
-		trec2 proper() const noexcept
+		bool is_valid() const noexcept
+		{
+			return p1.x <= p2.x && p1.y <= p2.y;
+		}
+
+		trec2 valid() const noexcept
 		{
 			auto copy = *this;
 			if (copy.p1.x > copy.p2.x) std::swap(copy.p1.x, copy.p2.x);
@@ -108,35 +146,94 @@ namespace glm
 			return copy;
 		}
 
-		trec2& make_proper() noexcept
+		trec2& make_valid() noexcept
 		{
 			if (p1.x > p2.x) std::swap(p1.x, p2.x);
 			if (p1.y > p2.y) std::swap(p1.y, p2.y);
 			return *this;
 		}
+
+
+		point_relationship classify(vec2 point, T edge_epsilon = T{ 0 }) const
+		{
+			if (epsilonEqual(point.x, p1.x, edge_epsilon) || epsilonEqual(point.y, p1.y, edge_epsilon) || epsilonEqual(point.x, p2.x, edge_epsilon) || epsilonEqual(point.y, p2.y, edge_epsilon))
+				return point_relationship::on_edge;
+			else if (!this->contains(point))
+				return point_relationship::outside;
+			else
+				return point_relationship::inside;
+		}
+
+		T calculate_area() const noexcept { return width() * height(); }
+
+		T edge_length() const noexcept { return (width() + height()) * 2; }
+
+		vec2 edge_point_alpha(double edge_progress) const
+		{
+			edge_progress = glm::fract(edge_progress);
+			const auto w = width();
+			const auto h = height();
+			const auto el = (w + h) * 2;
+			const auto d = static_cast<T>(edge_progress * el);
+			if (d < w)
+				return glm::lerp(this->left_top(), this->right_top(), d / w);
+			else if (d < w + h)
+				return glm::lerp(this->right_top(), this->right_bottom(), (d - w) / h);
+			else if (d < w + h + w)
+				return glm::lerp(this->right_bottom(), this->left_bottom(), (d - (w + h)) / w);
+			else
+				return glm::lerp(this->left_bottom(), this->left_top(), (d - (w + h + w)) / h);
+		}
+
+		vec2 edge_point(double edge_pos) const
+		{
+			const auto w = width();
+			const auto h = height();
+			edge_pos = fmod(edge_pos, (w + h) * 2);
+			if (edge_pos < w)
+				return glm::lerp(this->left_top(), this->right_top(), edge_pos / w);
+			else if (edge_pos < w + h)
+				return glm::lerp(this->right_top(), this->right_bottom(), (edge_pos - w) / h);
+			else if (edge_pos < w + h + w)
+				return glm::lerp(this->right_bottom(), this->left_bottom(), (edge_pos - (w + h)) / w);
+			else
+				return glm::lerp(this->left_bottom(), this->left_top(), (edge_pos - (w + h + w)) / h);
+		}
+
+		trec2 bounding_box() const noexcept
+		{
+			return *this;
+		}
+
+		vec2 projected(vec2 pt) const
+		{
+			const auto d = (pt - p1) / size();
+			const auto c = glm::round(glm::saturate(d));
+			return p1 + c * size();
+		}
 	};
 
 	template <typename T>
-	inline trec2<T> operator+(tvec2<T> op, trec2<T> rec) noexcept { return { rec.p1 + op, rec.p2 + op }; }
-
-	template <typename T>
-	inline std::ostream& operator<<(std::ostream& strm, vec<2, T> b) { return strm << "(" << b.x << "," << b.y << ")"; }
+	inline trec2<T> operator+(glm::tvec2<T> op, trec2<T> rec) noexcept { return { rec.p1 + op, rec.p2 + op }; }
 
 	template <typename T>
 	inline std::ostream& operator<<(std::ostream& strm, trec2<T> const& b) { return strm << '(' << b.p1.x << ',' << b.p1.y << ',' << b.p2.x << ',' << b.p2.y << ')'; }
+}
+
+using rec2 = gamelib::trec2<float>;
+using irec2 = gamelib::trec2<int>;
+
+namespace glm
+{
+	template <typename T>
+	inline std::ostream& operator<<(std::ostream& strm, glm::vec<2, T> b) { return strm << "(" << b.x << "," << b.y << ")"; }
 
 	inline auto manhattan(ivec2 a, ivec2 b)
 	{
 		const auto d = glm::abs(a - b);
 		return d.x + d.y;
 	}
-}
 
-using rec2 = glm::trec2<float>;
-using irec2 = glm::trec2<int>;
-
-namespace glm
-{
 	inline bool operator<(ivec2 a, ivec2 b) noexcept
 	{
 		return a.x < b.x || (!(b.x < a.x) && (a.y < b.y || (!(b.y < a.y))));

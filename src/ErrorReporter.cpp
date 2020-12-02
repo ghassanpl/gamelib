@@ -180,20 +180,6 @@ static auto CreateQueryHyperlink(std::string_view query, std::string_view inner_
 	return escaped;
 }
 
-void ghassanpl::ReportAssumptionFailure(ghassanpl::detail::source_location where, std::string_view expectation, std::initializer_list<std::pair<std::string_view, std::string>> values, std::string data)
-{
-	/*
-	Reporter holder{ ReportType::AssumptionFailure };
-	holder.FormatMessageLine("I assumed that {}", expectation);
-	for (auto& [name, value] : values)
-		holder.AddAdditionalInfo({ fmt::format("Value of '{}'", name), value });
-	if (!data.empty())
-		holder.AddAdditionalInfo({ "Additional Assumption Info", std::move(data) });
-
-	Report->PerformReport(holder);
-	*/
-}
-
 namespace gamelib
 {
 	Reporter::Reporter(IErrorReporter const& errep, ReportType type)
@@ -250,16 +236,21 @@ namespace gamelib
 		for (auto& [name, val] : holder.AdditionalInfoLines)
 			additional_info_text += fmt::format("{}: {}\n", name, val);
 
-		fmt::print(std::cerr, "[{}]\n{}\n{}\n", type_str, message_text, additional_info_text);
-
 		static constexpr std::wstring_view buttons[] = { L"Debug", L"Abort" , L"Continue" };
 		std::wstring long_msg{ message_text.begin(), message_text.end() }; /// poor man's conversion
 		std::wstring long_add{ additional_info_text.begin(), additional_info_text.end() }; /// poor man's conversion
-		auto result = ShowMessageBox(msg_header, icon, msg_header, buttons, 0, long_msg, { }, long_add, [](MessageBoxEvent event, uintptr_t a, uintptr_t b) {
-			if (event == MessageBoxEvent::LinkClicked)
-				ShellExecuteW(0, L"open", (const wchar_t*)b, NULL, NULL, SW_SHOWNORMAL);
-			return true;
+
+		auto result = [&]{
+			std::lock_guard guard{ mMutex };
+
+			fmt::print(std::cerr, "[{}]\n{}\n{}\n", type_str, message_text, additional_info_text);
+
+			return ShowMessageBox(msg_header, icon, msg_header, buttons, 0, long_msg, { }, long_add, [](MessageBoxEvent event, uintptr_t a, uintptr_t b) {
+				if (event == MessageBoxEvent::LinkClicked)
+					ShellExecuteW(0, L"open", (const wchar_t*)b, NULL, NULL, SW_SHOWNORMAL);
+				return true;
 			});
+		}();
 		if (result.ClickedButton == 0)
 			DebugBreak();
 		else if (result.ClickedButton == 1)

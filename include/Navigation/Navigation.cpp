@@ -1,5 +1,6 @@
 #include <iostream>
 #include "Navigation.h"
+#include "../Includes/Format.h"
 #include "../Includes/Assuming.h"
 
 namespace gamelib::squares

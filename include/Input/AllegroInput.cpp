@@ -536,12 +536,11 @@ namespace gamelib
 
 	void AllegroInput::Init()
 	{
+		mInputDevices.clear();
+
 		mInputDevices.push_back(std::make_unique<AllegroKeyboard>(*this)); /// static constexpr InputDeviceIndex KeyboardDeviceID = 0;
-		mKeyboard = dynamic_cast<AllegroKeyboard*>(mInputDevices.back().get());
-
 		mInputDevices.push_back(std::make_unique<AllegroMouse>(*this)); /// static constexpr InputDeviceIndex MouseDeviceID = 1;
-		mMouse = dynamic_cast<AllegroMouse*>(mInputDevices.back().get());
-
+		mInputDevices.push_back(nullptr);
 		RefreshJoysticks();
 
 		IInputSystem::Init();
@@ -553,35 +552,35 @@ namespace gamelib
 		{
 		case ALLEGRO_EVENT_KEY_DOWN:
 			static_cast<AllegroKeyboard*>(Keyboard())->KeyPressed(event.keyboard.keycode);
-			SetLastActiveDevice(mKeyboard, event.any.timestamp);
+			SetLastActiveDevice(Keyboard(), event.any.timestamp);
 			break;
 		case ALLEGRO_EVENT_KEY_CHAR:
-			SetLastActiveDevice(mKeyboard, event.any.timestamp);
+			SetLastActiveDevice(Keyboard(), event.any.timestamp);
 			break;
 		case ALLEGRO_EVENT_KEY_UP:
 			static_cast<AllegroKeyboard*>(Keyboard())->KeyReleased(event.keyboard.keycode);
-			SetLastActiveDevice(mKeyboard, event.any.timestamp);
+			SetLastActiveDevice(Keyboard(), event.any.timestamp);
 			break;
 		case ALLEGRO_EVENT_MOUSE_AXES:
 			static_cast<AllegroMouse*>(Mouse())->MouseWheelScrolled(event.mouse.dz, event.mouse.dw);
 			static_cast<AllegroMouse*>(Mouse())->MouseMoved(event.mouse.x, event.mouse.y);
-			SetLastActiveDevice(mMouse, event.any.timestamp);
+			SetLastActiveDevice(Mouse(), event.any.timestamp);
 			break;
 		case ALLEGRO_EVENT_MOUSE_BUTTON_DOWN:
 			static_cast<AllegroMouse*>(Mouse())->MouseButtonPressed(MouseButton(event.mouse.button - 1));
-			SetLastActiveDevice(mMouse, event.any.timestamp);
+			SetLastActiveDevice(Mouse(), event.any.timestamp);
 			break;
 		case ALLEGRO_EVENT_MOUSE_BUTTON_UP:
 			static_cast<AllegroMouse*>(Mouse())->MouseButtonReleased(MouseButton(event.mouse.button - 1));
-			SetLastActiveDevice(mMouse, event.any.timestamp);
+			SetLastActiveDevice(Mouse(), event.any.timestamp);
 			break;
 		case ALLEGRO_EVENT_MOUSE_ENTER_DISPLAY:
 			static_cast<AllegroMouse*>(Mouse())->MouseEntered();
-			SetLastActiveDevice(mMouse, event.any.timestamp);
+			SetLastActiveDevice(Mouse(), event.any.timestamp);
 			break;
 		case ALLEGRO_EVENT_MOUSE_LEAVE_DISPLAY:
 			static_cast<AllegroMouse*>(Mouse())->MouseLeft();
-			SetLastActiveDevice(mMouse, event.any.timestamp);
+			SetLastActiveDevice(Mouse(), event.any.timestamp);
 			break;
 
 		case ALLEGRO_EVENT_JOYSTICK_AXIS:
@@ -609,19 +608,25 @@ namespace gamelib
 	{
 		if (al_reconfigure_joysticks())
 		{
-			if (LastDeviceActive() == mFirstGamepad)
+			if (LastDeviceActive() == FirstGamepad())
 				SetLastActiveDevice(nullptr, 0);
-			mFirstGamepad = nullptr;
+
+			/// TODO: Try to retain order
+			
+			std::erase_if(mInputDevices, [this](auto& dev) { return mJoystickMap.contains(dev.get()); });
+			mInputDevices.resize(std::min(mInputDevices.size(), size_t(3)));
+
 			mJoystickMap.clear();
 
-			mInputDevices.resize(2);
 			for (int i = 0; i < al_get_num_joysticks(); i++)
 			{
-				auto stick = al_get_joystick(i);
-				auto gamepad = std::make_unique<AllegroGamepad>(*this, stick);
-				mJoystickMap[stick] = gamepad.get();
-				if (i == 0) mFirstGamepad = gamepad.get();
-				mInputDevices.push_back(std::move(gamepad));
+				auto joystick = al_get_joystick(i);
+				auto gamepad = std::make_unique<AllegroGamepad>(*this, joystick);
+				mJoystickMap[joystick] = gamepad.get();
+				if (i == 0)
+					mInputDevices[FirstGamepadDeviceID] = std::move(gamepad);
+				else
+					mInputDevices.push_back(std::move(gamepad));
 			}
 		}
 	}

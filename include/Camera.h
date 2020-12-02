@@ -67,6 +67,8 @@ namespace gamelib
 		void SetWorldBounds(rec2 const& rect, radians_t rotation);
 
 		void SetWorldSize(vec2 size);
+		vec2 WorldSize() const { return mWorldRect.size(); }
+
 		void SetWorldCenter(vec2 pos);
 		vec2 WorldCenter() const { return mWorldRect.center(); }
 

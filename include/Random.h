@@ -12,14 +12,14 @@ namespace gamelib::random
 	template <typename RANDOM>
 	uint64_t Integer(RANDOM& rng)
 	{
-		static const inline std::uniform_int_distribution<uint64_t> dist;
+		static const std::uniform_int_distribution<uint64_t> dist;
 		return dist(rng);
 	}
 
-	template <typename RANDOM>
-	double Percentage(RANDOM& rng)
+	template <typename REAL = double, typename RANDOM>
+	REAL Percentage(RANDOM& rng)
 	{
-		static const inline std::uniform_real_distribution<double> dist;
+		static const std::uniform_real_distribution<REAL> dist;
 		return dist(rng);
 	}
 
@@ -28,15 +28,15 @@ namespace gamelib::random
 	{
 		if (n_sided < 2) return 0;
 		std::uniform_int_distribution<uint64_t> dist{ 0, n_sided - 1 };
-		return dist(rng);
+		return dist(rng) + 1;
 	}
 
 	template <typename RANDOM, uint64_t N_SIDED>
 	requires (N_SIDED >= 2)
 	uint64_t Dice(RANDOM& rng)
 	{
-		static const inline std::uniform_int_distribution<uint64_t> dist{ 0, N_SIDED - 1 };
-		return dist(rng);
+		static const std::uniform_int_distribution<uint64_t> dist{ 0, N_SIDED - 1 };
+		return dist(rng) + 1;
 	}
 
 	namespace
@@ -62,8 +62,7 @@ namespace gamelib::random
 		return dist(rng);
 	}
 
-	template <typename RANDOM, typename T>
-	requires std::is_floating_point_v<T>
+	template <typename RANDOM, std::floating_point T>
 	T RealRange(RANDOM& rng, T from, T to)
 	{
 		if (from >= to) return T{};
@@ -94,21 +93,35 @@ namespace gamelib::random
 	template <typename RANDOM>
 	radians_t Radians(RANDOM& rng)
 	{
-		static const inline std::uniform_real_distribution<radians_t::base_type> dist{ 0.0f, 3.14159265358979323846f };
+		static const inline std::uniform_real_distribution<radians_t::base_type> dist{ radians_t::base_type{}, glm::two_pi<radians_t::base_type>() };
 		return radians_t{ dist(rng) };
+	}
+
+	template <std::floating_point T, typename RANDOM>
+	T Radians(RANDOM& rng)
+	{
+		static const std::uniform_real_distribution<T> dist{ T{}, glm::two_pi<T>() };
+		return dist(rng);
 	}
 
 	template <typename RANDOM>
 	degrees_t Degrees(RANDOM& rng)
 	{
-		static const inline std::uniform_real_distribution<degrees_t::base_type> dist{ 0.0f, 360.0f };
+		static const std::uniform_real_distribution<degrees_t::base_type> dist{ degrees_t::base_type{0}, degrees_t::base_type{360} };
 		return degrees_t{ dist(rng) };
 	}
 
-	template <typename RANDOM>
-	vec2 UnitVector(RANDOM& rng)
+	template <std::floating_point T, typename RANDOM>
+	T Degrees(RANDOM& rng)
 	{
-		return glm::rotate(vec2{ 1.0f, 0.0f }, Rotation(rng));
+		static const std::uniform_real_distribution<T> dist{ T{}, T{360} };
+		return dist(rng);
+	}
+
+	template <std::floating_point T = float, typename RANDOM>
+	glm::tvec2<T> UnitVector(RANDOM& rng)
+	{
+		return glm::rotate(glm::tvec2<T>{ T{ 1 }, T{ 0 } }, Radians<T>(rng));
 	}
 
 	template <typename RANDOM>

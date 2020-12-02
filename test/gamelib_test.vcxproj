@@ -161,6 +161,7 @@
     <ClCompile Include="game.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="misc.cpp" />
+    <ClCompile Include="Random_Tests.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\gamelib.vcxproj">

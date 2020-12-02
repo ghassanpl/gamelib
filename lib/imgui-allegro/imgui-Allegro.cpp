@@ -21,6 +21,11 @@ void ImGui::Allegro::Init(ALLEGRO_DISPLAY* display)
 
 	// Setup Platform/Renderer bindings
 	ImGui_ImplAllegro5_Init(display);
+
+	ImGui_ImplAllegro5_NewFrame();
+	ImGui::NewFrame();
+	ImGui::Render();
+	ImGui_ImplAllegro5_RenderDrawData(ImGui::GetDrawData());
 }
 
 void ImGui::Allegro::ProcessEvent(ALLEGRO_EVENT* event)

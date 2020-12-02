@@ -40,7 +40,7 @@ namespace gamelib
 		{
 			if (cp == '<') /// Parse tag
 			{
-				auto tag_name = string_ops::consume_while(str, string_ops::isalnum);
+				auto tag_name = string_ops::consume_while(str, string_ops::ascii::isalnum);
 				if (tag_name.empty())
 				{
 					SetText(fmt::format("#Error at character {}: tag name is empty#", str.data() - beg));
@@ -223,7 +223,7 @@ namespace gamelib
 	std::optional<std::string_view> Page::ConsumeArg(std::string_view& str)
 	{
 		if (string_ops::consume(str, '='))
-			if (auto ret = string_ops::consume_while(str, [](int cp) { return !string_ops::isspace(cp) && cp!='>'; }); !ret.empty())
+			if (auto ret = string_ops::consume_while(str, [](int cp) { return !string_ops::ascii::isspace(cp) && cp!='>'; }); !ret.empty())
 				return ret;
 		return std::nullopt;
 	}

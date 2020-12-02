@@ -19,13 +19,15 @@ namespace gamelib
 
 	void IInputSystem::Init()
 	{
-		SetLastActiveDevice(mKeyboard, 0);
+		SetLastActiveDevice(Keyboard(), 0);
 	}
 
 	void IInputSystem::Update()
 	{
 		for (auto& device : mInputDevices)
-			device->NewFrame();
+		{
+			if (device) device->NewFrame();
+		}
 	}
 
 
@@ -60,6 +62,11 @@ namespace gamelib
 		return Mouse()->IsInputPressed((DeviceInputID)but);
 	}
 
+	bool IInputSystem::IsKeyPressed(KeyboardKey key)
+	{
+		return Keyboard()->IsInputPressed((DeviceInputID)key);
+	}
+
 	bool IInputSystem::WasButtonPressed(Input input_id)
 	{
 		if (auto player = GetPlayer(input_id.Player))
@@ -82,6 +89,35 @@ namespace gamelib
 	bool IInputSystem::WasButtonPressed(MouseButton but)
 	{
 		return Mouse()->IsInputPressed((DeviceInputID)but) && !Mouse()->WasInputPressedLastFrame((DeviceInputID)but);
+	}
+
+	bool IInputSystem::WasKeyPressed(KeyboardKey key)
+	{
+		return Keyboard()->IsInputPressed((DeviceInputID)key) && !Keyboard()->WasInputPressedLastFrame((DeviceInputID)key);
+	}
+
+	bool IInputSystem::WasButtonReleased(Input input_id)
+	{
+		if (auto player = GetPlayer(input_id.Player))
+		{
+			if (auto it = player->Mappings.find(input_id.ActionID); it != player->Mappings.end())
+			{
+				for (auto& mapping : it->second)
+				{
+					if (auto device = InputDevice(mapping.DeviceID))
+					{
+						if (!device->IsInputPressed(mapping.Inputs[0]) && device->WasInputPressedLastFrame(mapping.Inputs[0]))
+							return true;
+					}
+				}
+			}
+		}
+		return false;
+	}
+
+	bool IInputSystem::WasKeyReleased(KeyboardKey key)
+	{
+		return !Keyboard()->IsInputPressed((DeviceInputID)key) && Keyboard()->WasInputPressedLastFrame((DeviceInputID)key);
 	}
 
 	float IInputSystem::AxisValue(Input of_input)

@@ -10,58 +10,203 @@
 #include <imgui.h>
 
 #include <Common.h>
-#include <Includes/Allegro.h>
-#include <Includes/EnumFlags.h>
-#include <Includes/Format.h>
-#include <Includes/GLM.h>
-#include <Includes/JSON.h>
-#include <Includes/MagicEnum.h>
 #include <Align.h>
-#include <Animations.h>
-#include <Camera.h>
-#include <Colors.h>
-#include <Debugger.h>
-#include <ErrorReporter.h>
-#include <Random.h>
-#include <Timing.h>
-#include <Navigation/Squares.h>
-#include <Navigation/Grid.h>
-#include <Navigation/Navigation.h>
-#include <Navigation/Maze.h>
 #include <Input/AllegroInput.h>
+#include <Timing.h>
+#include <Camera.h>
+#include <Random.h>
 #include <Text/TextField.h>
-#include <Utils/PanZoomer.h>
-#include <Debug/ImGuiUtils.h>
-#include <Serialization/IArchiver.h>
-#include <Serialization/IOStreamBuffers.h>
-#include <Serialization/CSV.h>
 #include <Debug/AllegroImGuiDebugger.h>
-#include <Resources/Files.h>
+#include <Navigation/Grid.h>
+#include <Includes/Assuming.h>
 
-#include <rsl/RSL.h>
-#include <rsl/ExecutionContext.h>
-#include <rsl/CppInterop.h>
+#include <filesystem>
 
 using namespace gamelib;
-using namespace gamelib::squares;
 
-struct Game;
+static constexpr int TILE_SIZE = 16;
 
-namespace glm
+using Bitmap = std::shared_ptr<ALLEGRO_BITMAP>;
+
+enum class TileType
 {
-	inline rsl::Value to_value(rsl::ExecutionContext const& exe, ivec2 const& v)
+	Air,
+	Block,
+	OneWayPlatform,
+	Spikes,
+	KeyBlock,
+	Bouncy,
+	Door,
+	Dirt,
+	Checkpoint,
+	Fence,
+	Ladder,
+	Disappearing,
+	Teleporter,
+	Lever,
+	Zappy,
+	BombableBlock,
+	RecursiveBlock,
+};
+
+struct Tile
+{
+	size_t BG = 0;
+	size_t Wall = 0;
+	TileType Type = TileType::Air;
+	size_t Mem = 0;
+};
+
+struct Animation;
+struct AnimationFrame;
+struct AnimationManager;
+
+struct Object
+{
+	virtual ~Object() noexcept = default;
+
+	bool Alive = true;
+	vec2 Position = {};
+	ivec2 Size = { TILE_SIZE / 2, TILE_SIZE / 2 };
+	vec2 SpriteOffset = {};
+	seconds_t Life = {};
+	AnimationManager const* AnimSource = nullptr;
+	
+	virtual void Update(seconds_t dt);
+	AnimationFrame const& Frame() const;
+
+	void PlayAnim(std::string_view anim);
+
+protected:
+
+	seconds_t mAnimTime = 0;
+	Animation const* mCurrentAnim = nullptr;
+};
+
+struct Mob : Object
+{
+	vec2 Acceleration = {};
+	vec2 Velocity = {};
+
+	vec2 PrevPosition = {};
+	vec2 PrevVelocity = {};
+
+	virtual void Update(seconds_t dt) override;
+};
+
+struct Player : Mob
+{
+
+};
+
+struct Enemy : Mob
+{
+	size_t EnemyIndex = 0;
+	int HP = 1;
+};
+
+struct ObjectDef
+{
+	size_t Type = 0;
+	ivec2 TilePos = {};
+	size_t Mem = 0;
+	bool Killed = false;
+};
+
+struct Tileset
+{
+	void Load(std::filesystem::path path, ivec2 frame_counts);
+
+	vec2 PosForID(size_t id) const
 	{
-		return exe.ToValue(v.x, v.y);
+		const auto x = id % mFrameCounts.x;
+		const auto y = id / mFrameCounts.x;
+		return { x * TILE_SIZE, y * TILE_SIZE };
 	}
-}
+
+	void DrawTile(size_t id, ivec2 pos) const;
+	void DrawTile(size_t id, vec2 pos) const;
+
+	Bitmap const& Image() const { return mImage; }
+
+private:
+
+	Bitmap mImage = {};
+	ivec2 mFrameCounts{};
+
+};
+
+struct AnimationFrame
+{
+	Bitmap Image = {};
+	ivec2 Pos{};
+	vec2 Offset = {};
+};
+
+struct Animation
+{
+	std::vector<AnimationFrame> Frames;
+	seconds_t FrameTime = 0.1;
+
+	AnimationFrame const& FrameAtTime(seconds_t time, seconds_t* out_time_in_frame = nullptr) const;
+
+	template <std::convertible_to<ivec2>... FRAMES>
+	void Set(seconds_t frame_time, Bitmap img, FRAMES... pos)
+	{
+		FrameTime = frame_time;
+		(Frames.push_back({ img, pos }), ...);
+	}
+
+	template <std::convertible_to<size_t>... FRAMES>
+	void Set(seconds_t frame_time, Tileset const& tileset, FRAMES... pos)
+	{
+		FrameTime = frame_time;
+		(Frames.push_back({ tileset.Image(), tileset.PosForID(pos) }), ...);
+	}
+
+};
+
+struct AnimationManager
+{
+	std::map<std::string, Animation, std::less<>> Animations;
+
+	Animation const* FindAnimation(std::string_view animation) const;
+
+	template <std::convertible_to<ivec2>... FRAMES>
+	void AddAnimation(std::string name, seconds_t frame_time, Bitmap img, FRAMES... pos)
+	{
+		Assuming(!Animations.contains(name));
+		Animations[name].Set(frame_time, std::move(img), pos...);
+	}
+
+	template <std::convertible_to<size_t>... FRAMES>
+	void AddAnimation(std::string name, seconds_t frame_time, Tileset const& tileset, FRAMES... pos)
+	{
+		Assuming(!Animations.contains(name));
+		Animations[name].Set(frame_time, tileset, pos...);
+	}
+};
+
+struct Level
+{
+	std::string Name;
+	gamelib::squares::Grid<Tile> Tiles;
+	std::vector<ObjectDef> Objects;
+};
 
 struct Game
 {
-	void Init();
+	std::map<InputID, Bitmap, std::less<>> input_gfx;
 
-	//ALLEGRO_BITMAP* tiles[7];
-	std::map<InputID, ALLEGRO_BITMAP*, std::less<>> input_gfx;
-	//ALLEGRO_BITMAP* characters[4]{};
+	Tileset LevelTiles;
+	Tileset PlayerImages;
+	Level CurrentLevel;
+	std::vector<std::unique_ptr<Object>> LevelObjects;
+	Player* Gostek = nullptr;
+
+	AnimationManager PlayerAnimations;
+
+	void Init();
 
 	void Load();
 
@@ -81,32 +226,32 @@ struct Game
 
 	void EndMove();
 
+	Bitmap LoadBitmap(std::filesystem::path path);
+
 	template <typename... ARGS>
-	void DrawText(ALLEGRO_FONT* font, vec2 position, Color const& color, Color const& background_color, Align align, std::string_view format, ARGS&&... args)
+	void DrawTextV(ALLEGRO_FONT* font, vec2 position, Color const& color, Color const& background_color, Align align, std::string_view format, ARGS&&... args)
 	{
 		auto str = fmt::format(format, std::forward<ARGS>(args)...);
-
-		ALLEGRO_USTR_INFO info{};
-		auto buf = al_ref_buffer(&info, str.data(), str.size());
-
-		int x, y, w, h;
-		al_get_ustr_dimensions(font, buf, &x, &y, &w, &h);
-
-		position.x += AlignAxis((float)w, 0.0f, Horizontal(align));
-		position.y += AlignAxis((float)h, 0.0f, Vertical(align));
-
-		if (background_color.a != 0)
-		{
-			const auto box_offset = std::max(h / 4, 4);
-			al_draw_filled_rectangle(x + position.x - box_offset, y + position.y - box_offset, x + position.x + w + box_offset, y + position.y + h + box_offset, ToAllegro(background_color));
-		}
-
-		const auto shadow_offset = std::max(h / 16, 1);
-		al_draw_ustr(font, ToAllegro(Contrasting(color)), position.x + shadow_offset, position.y + shadow_offset, ALLEGRO_ALIGN_LEFT, buf);
-		al_draw_ustr(font, ToAllegro(color), position.x, position.y, ALLEGRO_ALIGN_LEFT, buf);
+		DrawText(font, position, color, background_color, align, str);
 	}
 
+	void DrawText(ALLEGRO_FONT* font, vec2 position, Color const& color, Color const& background_color, Align align, std::string_view str);
+
 	void Shutdown();
+
+	IErrorReporter& ErrorReporter() const { return *mReporter; }
+
+	/// debug vars
+
+	float gravity = 500.0f;
+	float zoom = 5.0f;
+	ivec2 start_pos = vec2{ 3,3 };
+	float jump_velocity = -200.0f;
+	float move_accel = 120.0f;
+	float move_decel = 20.0f;
+
+	bool draw_tiles = false;
+	bool draw_objects = false;
 
 private:
 
@@ -126,6 +271,9 @@ private:
 	float mCameraSpeed = 15.0f;
 	bool mCameraFocus = true;
 
+	bool mCanJump = false;
+	bool mJumping = false;
+
 	bool mQuit = false;
 	double mDT = 0;
 
@@ -133,11 +281,7 @@ private:
 
 	std::mt19937_64 RNG;
 
-	Page mTileDescription;
-
-	std::map<std::string, ALLEGRO_BITMAP*, std::less<>> mImages;
-
-	ALLEGRO_BITMAP* GetImage(std::string_view name) const;
-
 	std::vector<std::function<bool(seconds_t)>> mAnimators;
+
+	std::map<std::filesystem::path, Bitmap> mBitmaps;
 };

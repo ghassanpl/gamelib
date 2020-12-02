@@ -53,9 +53,9 @@ namespace gamelib
 		/// 
 		/// TODO: Maybe add a GenericDeviceType enum? { Keyboard, Mouse, Gamepad, Accelerometer, Compass, EnvironmentSensor, GPS, ... }
 
-		IKeyboardDevice* Keyboard() const { return mKeyboard; }
-		IMouseDevice* Mouse() const { return mMouse; }
-		IGamepadDevice* FirstGamepad() const { return mFirstGamepad; }
+		IKeyboardDevice* Keyboard() const { return dynamic_cast<IKeyboardDevice*>(mInputDevices[KeyboardDeviceID].get()); }
+		IMouseDevice* Mouse() const { return dynamic_cast<IMouseDevice*>(mInputDevices[MouseDeviceID].get());; }
+		IGamepadDevice* FirstGamepad() const { return dynamic_cast<IGamepadDevice*>(mInputDevices[FirstGamepadDeviceID].get());; }
 
 		std::vector<IInputDevice*> AllInputDevices() const;
 
@@ -123,6 +123,9 @@ namespace gamelib
 		void MapButton(DeviceInputID physical_button, InputDeviceIndex of_device, Input to_input);
 		void MapAxis1D(DeviceInputID physical_axis, InputDeviceIndex of_device, Input to_input);
 		void MapAxis2D(DeviceInputID physical_axis1, DeviceInputID physical_axis2, InputDeviceIndex of_device, Input to_input);
+		
+		/// Data events: voice command, hand/body shape/gesture; maybe should be called "Match" or "Pattern" events?
+		//void MapDataEvent(...);
 
 		void MapButtonToAxis(DeviceInputID physical_button, InputDeviceIndex of_device, double to_pressed_value, double and_released_value, Input of_input);
 		/// mapPhysicalButton:ofDevice:toPressedValue:andReleasedValue:ofAxisInput:
@@ -136,6 +139,9 @@ namespace gamelib
 		bool WasKeyPressed(KeyboardKey key);
 
 		bool WasButtonReleased(Input input_id);
+		bool WasButtonReleased(MouseButton but);
+		bool WasKeyReleased(KeyboardKey key);
+
 		int  ButtonRepeatCount(Input input_id);
 
 		bool IsNavigationPressed(UINavigationInput input_id);
@@ -175,10 +181,6 @@ namespace gamelib
 			InputDeviceIndex DeviceID = 0;
 			DeviceInputID Inputs[2] = { 0, InvalidDeviceInputID };
 		};
-
-		IKeyboardDevice* mKeyboard = nullptr;
-		IMouseDevice* mMouse = nullptr;
-		IGamepadDevice* mFirstGamepad = nullptr;
 
 		IInputDevice* mLastActiveDevice = nullptr;
 		void SetLastActiveDevice(IInputDevice* device, seconds_t current_time);

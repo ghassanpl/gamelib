@@ -19,6 +19,7 @@ namespace gamelib::squares
 		void Reset(int w, int h, TILE_DATA const& default_tile);
 		void Reset(int w, int h);
 		void Reset(ivec2 size) { Reset(size.x, size.y); }
+		void Reset(ivec2 size, TILE_DATA const& default_tile) { Reset(size.x, size.y, default_tile); }
 
 		/// Accessors & Queries
 
@@ -83,10 +84,12 @@ namespace gamelib::squares
 		int Width() const noexcept { return mWidth; }
 		int Height() const noexcept { return mHeight; }
 		ivec2 Size() const noexcept { return { mWidth, mHeight }; }
+		irec2 Perimeter() const noexcept { return irec2::from_size({}, Size()); }
 		std::span<TILE_DATA const> Tiles() const { return mTiles; }
 
 		vec2 TilePositionToWorldPosition(ivec2 tile_pos, vec2 tile_size) const { return vec2(tile_pos) * tile_size; }
 		ivec2 WorldPositionToTilePosition(vec2 world_pos, vec2 tile_size) const { return ivec2(glm::floor(world_pos / tile_size)); }
+		irec2 WorldRectToTileRect(rec2 world_rect, vec2 tile_size) const { return irec2{ glm::floor(world_rect.p1 / tile_size), glm::ceil(world_rect.p2 / tile_size) }; }
 		rec2 RectForTile(ivec2 pos, vec2 tile_size) const { return rec2::from_size(TilePositionToWorldPosition(pos, tile_size), tile_size); }
 
 		/// Modifiers

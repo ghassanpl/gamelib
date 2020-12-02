@@ -6,6 +6,8 @@
 
 namespace gamelib
 {
+	using file_path = std::filesystem::path;
+
 	struct IMachine : IHardwareDevice
 	{
 		/// volumes / filesystems

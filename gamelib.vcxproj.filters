@@ -52,6 +52,9 @@
     <Filter Include="Source Files\Machine">
       <UniqueIdentifier>{81af9860-4b5f-4fbe-bc34-4b04d4608f96}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Geometry">
+      <UniqueIdentifier>{3d0eb2ff-2542-4382-810f-ef60d6d19487}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\Includes\Allegro.h">
@@ -144,9 +147,6 @@
     <ClInclude Include="include\Timing.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\Timing.impl.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="lib\imgui-allegro\imgui-Allegro.h">
       <Filter>Source Files\Libs</Filter>
     </ClInclude>
@@ -204,6 +204,57 @@
     <ClInclude Include="include\Machine\IHardwareDevice.h">
       <Filter>Source Files\Machine</Filter>
     </ClInclude>
+    <ClInclude Include="include\Geometry\Capsule.h">
+      <Filter>Source Files\Geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Geometry\Circle.h">
+      <Filter>Source Files\Geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Geometry\Ellipse.h">
+      <Filter>Source Files\Geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Geometry\Polygon.h">
+      <Filter>Source Files\Geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Geometry\Segment.h">
+      <Filter>Source Files\Geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Geometry\Triangle.h">
+      <Filter>Source Files\Geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Geometry\Discretize.h">
+      <Filter>Source Files\Geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Geometry\ShapeConcept.h">
+      <Filter>Source Files\Geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Geometry\Segmentize.h">
+      <Filter>Source Files\Geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Geometry\Triangulate.h">
+      <Filter>Source Files\Geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Geometry\RandomPoint.h">
+      <Filter>Source Files\Geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Geometry\Ray.h">
+      <Filter>Source Files\Geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Geometry\Intersection.h">
+      <Filter>Source Files\Geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Geometry\RayCast.h">
+      <Filter>Source Files\Geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Geometry\Collision.h">
+      <Filter>Source Files\Geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Utils\MemberSpan.h">
+      <Filter>Source Files\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Debug\Statistics.h">
+      <Filter>Source Files\Debug</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="include\Camera.cpp">
@@ -242,8 +293,11 @@
     <ClCompile Include="src\Debug\Debugger.cpp">
       <Filter>Source Files\Support</Filter>
     </ClCompile>
-    <ClCompile Include="include\Machine\IPlayer.cpp">
+    <ClCompile Include="include\Timing.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="include\Machine\IPlayer.cpp">
+      <Filter>Source Files\Machine</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

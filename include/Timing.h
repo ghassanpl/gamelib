@@ -1,16 +1,21 @@
 #pragma once
 #include "Common.h"
+#include "Debug/Statistics.h"
 #include <string_view>
 #include <map>
 #include <functional>
 
 namespace gamelib
 {
+	struct IDebugger;
+
 	class TimingSystem
 	{
 	public:
 
 		TimingSystem(std::function<seconds_t()> time_getter) : CurrentTime(std::move(time_getter)) {}
+
+		void Debug(IDebugger& debugger);
 
 		std::function<seconds_t()> CurrentTime;
 
@@ -34,6 +39,22 @@ namespace gamelib
 		auto TimeSinceLastFrame() -> seconds_t;
 		auto FrameStartTime() -> seconds_t;
 		auto TotalGameTime() -> seconds_t;
+
+		auto MaxTimeSinceLastFrame() const -> seconds_t;
+		void SetMaxTimeSinceLastFrame(seconds_t max_time);
+
+		struct FrameData
+		{
+			seconds_t CurrentTime;
+			seconds_t TotalGameTime;
+			seconds_t TimeSinceLastFrame;
+			int FixedFrames;
+			seconds_t FixedAccumulator;
+		};
+
+		auto RecordLastFrames() const { return mRecordLastFrames; }
+		auto SetRecordLastFrames(size_t frames) { mRecordLastFrames = frames; }
+		auto RecordedLastFrameDeltas() const -> auto& { return mLastFrames; }
 
 		///# Fixed Frames #///
 
@@ -141,17 +162,18 @@ namespace gamelib
 
 		bool mPaused = false;
 
-		int mFixedFrames = 0;
+		KPI<int> mFixedFrames = 0;
 		seconds_t mFixedAccumulator = 0;
 
 		seconds_t mGameStartTime = -1.0;
 		seconds_t mPausedTime = 0;
 		seconds_t mCurrentTime = 0;
-		seconds_t mTimeSinceLastFrame = 0;
+		KPI<seconds_t> mTimeSinceLastFrame = 0;
+		seconds_t mMaxTimeSinceLastFrame = std::numeric_limits<seconds_t>::max();
 		seconds_t mTotalGameTime = 0;
+
+		size_t mRecordLastFrames = 0;
+		std::vector<FrameData> mLastFrames;
 	};
 
-	/// Implementation
 }
-
-#include "Timing.impl.h"
